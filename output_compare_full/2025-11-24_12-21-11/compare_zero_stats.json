@@ -1,0 +1,34 @@
+{
+  "raw": {
+    "overall_zero_or_neg_ratio": 0.17315673828125,
+    "bottom_half_zero_or_neg_ratio": 0.22186279296875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 5674
+  },
+  "dilate": {
+    "overall_zero_or_neg_ratio": 0.014862060546875,
+    "bottom_half_zero_or_neg_ratio": 0.016357421875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 487
+  },
+  "inpaint": {
+    "overall_zero_or_neg_ratio": 0.02239990234375,
+    "bottom_half_zero_or_neg_ratio": 0.02569580078125,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 734
+  },
+  "config": {
+    "H": 64,
+    "W": 512,
+    "FOV_UP": 3.0,
+    "FOV_DOWN": -23.0,
+    "DILATE_KERNEL": 7,
+    "DILATE_PASSES": 3,
+    "DILATE_MAX_BLEND": 0.8,
+    "WIN": 5,
+    "SIGMA_SPATIAL": 2.0,
+    "SIGMA_GUIDE": 0.2,
+    "INPAINT_ITERS": 1,
+    "MEDIAN_KSIZE": 0
+  }
+}

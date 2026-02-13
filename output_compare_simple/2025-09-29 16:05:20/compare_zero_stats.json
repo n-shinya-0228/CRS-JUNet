@@ -1,0 +1,24 @@
+{
+  "raw": {
+    "overall_zero_or_neg_ratio": 0.17315673828125,
+    "bottom_half_zero_or_neg_ratio": 0.22186279296875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 5674
+  },
+  "processed": {
+    "overall_zero_or_neg_ratio": 0.062713623046875,
+    "bottom_half_zero_or_neg_ratio": 0.05462646484375,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 2055
+  },
+  "config": {
+    "H": 64,
+    "W": 512,
+    "FOV_UP": 3.0,
+    "FOV_DOWN": -23.0,
+    "MAX_GAP_ROW": 2,
+    "MAX_GAP_COL": 2,
+    "INPAINT_MODE": "linear",
+    "MEDIAN_KSIZE": 0
+  }
+}

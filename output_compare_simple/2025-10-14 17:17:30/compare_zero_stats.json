@@ -1,0 +1,38 @@
+{
+  "raw": {
+    "overall_zero_or_neg_ratio": 0.17315673828125,
+    "bottom_half_zero_or_neg_ratio": 0.22186279296875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 5674
+  },
+  "A_linear_only": {
+    "overall_zero_or_neg_ratio": 0.062713623046875,
+    "bottom_half_zero_or_neg_ratio": 0.05462646484375,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 2055
+  },
+  "B_morph_only": {
+    "overall_zero_or_neg_ratio": 0.049468994140625,
+    "bottom_half_zero_or_neg_ratio": 0.0465087890625,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 1621
+  },
+  "C_hybrid": {
+    "overall_zero_or_neg_ratio": 0.04095458984375,
+    "bottom_half_zero_or_neg_ratio": 0.0413818359375,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 1342
+  },
+  "config": {
+    "H": 64,
+    "W": 512,
+    "FOV_UP": 3.0,
+    "FOV_DOWN": -23.0,
+    "MAX_GAP_ROW": 2,
+    "MAX_GAP_COL": 2,
+    "INPAINT_MODE": "linear",
+    "MORPH_ITERS": 1,
+    "DEPTH_TAU_ABS": 0.5,
+    "DEPTH_TAU_REL": 0.05
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "raw": {
+    "overall_zero_or_neg_ratio": 0.17315673828125,
+    "bottom_half_zero_or_neg_ratio": 0.22186279296875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 5674
+  },
+  "inpaint": {
+    "overall_zero_or_neg_ratio": 0.090545654296875,
+    "bottom_half_zero_or_neg_ratio": 0.08074951171875,
+    "pixels_total": 32768,
+    "pixels_zero_or_neg": 2967
+  },
+  "config": {
+    "H": 64,
+    "W": 512,
+    "FOV_UP": 3.0,
+    "FOV_DOWN": -23.0,
+    "MAJ_MIN_VOTES": 6,
+    "INPAINT_ITERS": 3
+  }
+}
