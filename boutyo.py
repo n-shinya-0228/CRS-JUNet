@@ -7,7 +7,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ===================== USER SETTINGS (edit here) =====================
-BIN_PATH = "/home/jun/src/SemanticKitti/sequences/08/velodyne/000001.bin"   # ★ここを書き換える
+BIN_PATH = "/home/shiny/SemanticKitti/sequences/08/velodyne/000001.bin"   # ★ここを書き換える
 SAVE_DIR  = f"UnpNet/output_compare_simple/{now}"  # None の場合: ./UnpNet/output_compare_modes/<timestamp>/ に保存
 
 H, W = 64, 512

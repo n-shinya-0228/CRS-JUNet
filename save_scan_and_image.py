@@ -6,7 +6,7 @@ from lib.utils.laserscan import LaserScan
 import scipy.ndimage as ndimage
 
 # --------- 設定 ---------
-bin_path = "/home/jun/src/SemanticKitti/sequences/08/velodyne/000001.bin"
+bin_path = "/home/shiny/SemanticKitti/sequences/08/velodyne/000001.bin"
 save_dir = "output"
 H = 64
 W = 512
