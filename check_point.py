@@ -11,7 +11,7 @@ now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ====================== CONFIG ======================
 # Path to one SemanticKITTI .bin file
-BIN_PATH = "/home/jun/src/SemanticKitti/sequences/01/velodyne/000001.bin"
+BIN_PATH = "/home/ns/SemanticKitti/sequences/01/velodyne/000001.bin"
 
 # Output directory
 SAVE_DIR = f"UnpNet/output_compare_simple/{now}"

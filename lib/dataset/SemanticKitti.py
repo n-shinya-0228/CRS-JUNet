@@ -292,12 +292,19 @@ class SemanticKitti(Dataset):
     proj_x[:unproj_n_points] = torch.from_numpy(scan.proj_x)
     proj_y = torch.full([self.max_points], -1, dtype=torch.long)
     proj_y[:unproj_n_points] = torch.from_numpy(scan.proj_y)
+
+    edge_tensor = torch.from_numpy(scan.edge).float().unsqueeze(0)
+
+    if edge_tensor.max() > 1.0:
+        edge_tensor = edge_tensor / 255.0  # 0.0~1.0 に正規化
+
     proj = torch.cat([proj_range.unsqueeze(0).clone(),                  #画像としてまとめた [range, x, y, z, remission] を正規化。
                       proj_xyz.clone().permute(2, 0, 1),                
-                      proj_remission.unsqueeze(0).clone()])
+                      proj_remission.unsqueeze(0).clone(),
+                      edge_tensor],dim=0)
     # proj = torch.cat([proj_xyz.clone().permute(2, 0, 1),                
     #               proj_remission.unsqueeze(0).clone()])
-    proj = (proj - self.sensor_img_means[:, None, None]                 #画像全体に対して平均を引き、標準偏差で割る（画像の前処理）
+    proj[:5] = (proj[:5] - self.sensor_img_means[:, None, None]                 #画像全体に対して平均を引き、標準偏差で割る（画像の前処理）
             ) / self.sensor_img_stds[:, None, None]
     # proj = proj * proj_mask.float()                                     #無効なピクセルは proj_mask で0にして無視。
 

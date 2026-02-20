@@ -113,7 +113,6 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-
         # Data
         self.parser = Parser(root=self.datadir,
                              data_cfg=DATA,

@@ -13,7 +13,7 @@ from lib.utils.laserscan3 import SemLaserScan  # labels も扱える版
 
 # ====================== CONFIG ======================
 # 対象の .bin ファイル 1枚
-BIN_PATH = "/home/jun/src/SemanticKitti/sequences/01/velodyne/000001.bin"
+BIN_PATH = "/home/ns/SemanticKitti/sequences/01/velodyne/000001.bin"
 
 # .label のパスは BIN_PATH から自動生成 (/velodyne/ → /labels/ , .bin → .label)
 def guess_label_path(bin_path: str) -> str:

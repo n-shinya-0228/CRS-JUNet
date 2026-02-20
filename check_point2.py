@@ -14,7 +14,7 @@ from lib.utils.laserscan3 import LaserScan  # projection (H,W,FOV)  :contentRefe
 
 # ====================== CONFIG ======================
 # Path to one SemanticKITTI .bin file
-BIN_PATH = "/home/jun/src/SemanticKitti/sequences/08/velodyne/000001.bin"
+BIN_PATH = "/home/ns/SemanticKitti/sequences/08/velodyne/000001.bin"
 
 # Output directory
 SAVE_DIR = f"output_compare_full/{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
