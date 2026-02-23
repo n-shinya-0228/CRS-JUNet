@@ -44,6 +44,8 @@ class LaserScan:
     # mask containing for each pixel, if it contains a point or not
     self.proj_mask = np.zeros((self.proj_H, self.proj_W), dtype=np.int32)  # [H,W] mask
 
+    self.pseudo_image = None
+
   def size(self):
     """Return the size of the point cloud."""
     return self.points.shape[0]
@@ -85,73 +87,86 @@ class LaserScan:
       self.remissions = np.zeros((points.shape[0]), dtype=np.float32)
 
     if self.project:
-      self.do_range_projection()
+      self.do_pseudo_image_projection()
 
   def do_pseudo_image_projection(self):
     """Project a pointcloud into a multi-channel Pseudo-image (BEV grid)."""
     
-    # 1. グリッドの解像度と範囲（例：1ピクセル=20cm、前方50m、左右25m）
+    # 1. グリッドの解像度と範囲
     res = 0.2
     x_min, x_max = 0.0, 51.2
     y_min, y_max = -25.6, 25.6
     
     W = int((y_max - y_min) / res)
     H = int((x_max - x_min) / res)
-    
-    # 特徴量を入れる疑似画像（チャンネル数 C=4: 最大Z, 平均Z, 最大反射強度, 点の密度）
-    # ※__init__ で self.pseudo_image = np.zeros((H, W, 4), dtype=np.float32) として定義しておく
+
+    # ★【修正1】データローダーが要求するすべての配列を正しいサイズで初期化
+    self.proj_range = np.full((H, W), -1, dtype=np.float32)
+    self.proj_xyz = np.full((H, W, 3), -1, dtype=np.float32)
+    self.proj_remission = np.full((H, W), -1, dtype=np.float32)
+    self.proj_idx = np.full((H, W), -1, dtype=np.int32)
+    self.proj_mask = np.zeros((H, W), dtype=np.int32)
     pseudo_image = np.zeros((H, W, 4), dtype=np.float32)
 
     scan_x = self.points[:, 0]
     scan_y = self.points[:, 1]
     scan_z = self.points[:, 2]
-    remissions = self.remissions[:, 0]
+    remissions = self.remissions.reshape(-1)
+
+    depth = np.linalg.norm(self.points, 2, axis=1)
+    self.unproj_range = np.copy(depth)
 
     # 2. 範囲内の点をフィルタリング
     mask = (scan_x >= x_min) & (scan_x < x_max) & \
            (scan_y >= y_min) & (scan_y < y_max)
+
+    grid_x = np.floor((scan_y - y_min) / res).astype(np.int32)
+    grid_y = np.floor((x_max - scan_x) / res).astype(np.int32)
+
+    self.proj_x = np.zeros(self.points.shape[0], dtype=np.int32)
+    self.proj_y = np.zeros(self.points.shape[0], dtype=np.int32)
+    self.proj_x[mask] = np.clip(grid_x[mask], 0, W - 1)
+    self.proj_y[mask] = np.clip(grid_y[mask], 0, H - 1)
+
+    # 3. ボクセル（ピクセル）ごとの計算用データ抽出
+    valid_indices = np.arange(self.points.shape[0])[mask]
+    gx = self.proj_x[mask]
+    gy = self.proj_y[mask]
     
-    x_f = scan_x[mask]
-    y_f = scan_y[mask]
-    z_f = scan_z[mask]
-    r_f = remissions[mask]
-
-    # 3. 各点がどのグリッド(x, y)に属するかを計算
-    grid_x = np.floor((y_f - y_min) / res).astype(np.int32)
-    grid_y = np.floor((x_max - x_f) / res).astype(np.int32)
-
-    # 1Dのインデックスに変換（NumPyで高速にグループ化するためのテクニック）
-    grid_indices = grid_y * W + grid_x
-
-    # 4. グリッドごとに特徴量を計算（疑似画像の生成）
-    # np.uniqueを使って、同じグリッドに属する点群をまとめます
+    grid_indices = gy * W + gx
     unique_indices, inverse_indices, counts = np.unique(grid_indices, return_inverse=True, return_counts=True)
-
-    # 各グリッドのY, X座標を復元
     u_y = unique_indices // W
     u_x = unique_indices % W
 
-    # 高速化のため、本来は scatter_max や bincount などの関数を使いますが、
-    # ここでは概念を分かりやすくするため、ユニークなグリッドごとにループ処理を模しています。
-    # ※実際の深層学習パイプラインでは、PyTorchの torch_scatter 等を使ってGPUで一括計算します。
-    
+    z_f = scan_z[mask]
+    r_f = remissions[mask]
+    pts_f = self.points[mask]
+
+    # 4. グリッドごとに特徴量を計算し、ダミー配列にも格納する
     for i, idx in enumerate(unique_indices):
-        # このグリッドに属する点のマスク
         cell_mask = (inverse_indices == i)
         
         cell_z = z_f[cell_mask]
         cell_r = r_f[cell_mask]
         
-        # チャンネルごとの特徴量を抽出して疑似画像に格納
-        pseudo_image[u_y[i], u_x[i], 0] = np.max(cell_z)      # Ch1: 最大の高さ
-        pseudo_image[u_y[i], u_x[i], 1] = np.mean(cell_z)     # Ch2: 平均の高さ
-        pseudo_image[u_y[i], u_x[i], 2] = np.max(cell_r)      # Ch3: 最大の反射強度
-        pseudo_image[u_y[i], u_x[i], 3] = counts[i] / 100.0   # Ch4: 点の密度（正規化）
+        pseudo_image[u_y[i], u_x[i], 0] = np.max(cell_z)
+        pseudo_image[u_y[i], u_x[i], 1] = np.mean(cell_z)
+        pseudo_image[u_y[i], u_x[i], 2] = np.max(cell_r)
+        pseudo_image[u_y[i], u_x[i], 3] = counts[i] / 100.0
+
+        # BEVにおいては「そのピクセルの中で一番高い位置にある点」を代表点として扱うのが一般的です
+        max_idx_in_cell = np.argmax(cell_z)
+        orig_idx = valid_indices[cell_mask][max_idx_in_cell]
+
+        self.proj_range[u_y[i], u_x[i]] = np.max(cell_z) # rangeの代わりに高さを格納
+        self.proj_xyz[u_y[i], u_x[i]] = pts_f[cell_mask][max_idx_in_cell]
+        self.proj_remission[u_y[i], u_x[i]] = cell_r[max_idx_in_cell]
+        self.proj_idx[u_y[i], u_x[i]] = orig_idx
+        self.proj_mask[u_y[i], u_x[i]] = 1
 
     self.pseudo_image = pseudo_image
-    
-    # セマンティックラベルがある場合は、一番高い位置にある点のラベルや、
-    # そのセル内で最も多いラベル（多数決）を pseudo_label_image として保存します。
+    self.proj_H = H
+    self.proj_W = W
 
 
 class SemLaserScan(LaserScan):
