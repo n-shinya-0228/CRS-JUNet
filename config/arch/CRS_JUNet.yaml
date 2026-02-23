@@ -4,7 +4,7 @@
 train:
   # loss: "xentropy"       # must be either xentropy or iou
   loss: "focal_gamma"
-  max_epochs: 10
+  max_epochs: 100
   lr: 0.005               # sgd learning rate
   min_lr: 2.0e-5
   wup_epochs: 3         # warmup during first XX epochs (can be float)
