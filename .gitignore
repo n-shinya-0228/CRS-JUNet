@@ -1,5 +1,10 @@
 .venv/
-logs/
-.pyproject.toml
-.vscode/
 SemanticKitti/
+logs/
+output/
+lib/_pycache_/
+lib/dataset/_pycache_/
+lib/losse/_pycache_/
+lib/models/_pycache_/
+lib/postproc/_pycache_/
+lib/utils/_pycache_/

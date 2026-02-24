@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import cv2
 from torch.utils.data import Dataset
-from ..utils.laserscan3 import LaserScan, SemLaserScan
+from ..utils.laserscan4 import LaserScan, SemLaserScan
 
 EXTENSIONS_SCAN = ['.bin']
 EXTENSIONS_EDGE = ['.png']
@@ -243,14 +243,17 @@ class SemanticKitti(Dataset):
         proj_mask_np = scan.proj_mask.astype(np.int32)                 # [H,W] {0,1}
 
         # ---------- range の小穴補完 ----------
-        proj_range_inp, filled_mask_np = self._inpaint_range_small_holes(
-            proj_range,
-            proj_mask_np,
-            max_gap_row=self.max_gap_row,
-            max_gap_col=self.max_gap_col,
-            mode=self.inpaint_mode,
-            median_ksize=self.median_ksize,
-        )
+        # proj_range_inp, filled_mask_np = self._inpaint_range_small_holes(
+        #     proj_range,
+        #     proj_mask_np,
+        #     max_gap_row=self.max_gap_row,
+        #     max_gap_col=self.max_gap_col,
+        #     mode=self.inpaint_mode,
+        #     median_ksize=self.median_ksize,
+        # )
+
+        proj_range_inp = proj_range
+        filled_mask_np = proj_mask_np
 
         # 「学習に使う有効域」= 観測 or 小穴補完
         valid_mask_np = (proj_mask_np.astype(bool) | (filled_mask_np.astype(bool))).astype(np.uint8)
