@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from ..utils.laserscan4 import LaserScan, SemLaserScan
 
-from .SemanticKitti9 import SemanticKitti
+from .SemanticKitti11 import SemanticKitti
 
 class Parser():
   # standard conv, BN, relu

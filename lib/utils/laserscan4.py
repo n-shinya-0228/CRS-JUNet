@@ -108,6 +108,13 @@ class LaserScan:
     self.proj_mask = np.zeros((H, W), dtype=np.int32)
     pseudo_image = np.zeros((H, W, 4), dtype=np.float32)
 
+    # ラベル用の配列も新しい H, W (256x256) で初期化し直す！
+    if hasattr(self, 'proj_sem_label'):
+        self.proj_sem_label = np.zeros((H, W), dtype=np.int32)
+        self.proj_sem_color = np.zeros((H, W, 3), dtype=float)
+        self.proj_inst_label = np.zeros((H, W), dtype=np.int32)
+        self.proj_inst_color = np.zeros((H, W, 3), dtype=float)
+
     scan_x = self.points[:, 0]
     scan_y = self.points[:, 1]
     scan_z = self.points[:, 2]
