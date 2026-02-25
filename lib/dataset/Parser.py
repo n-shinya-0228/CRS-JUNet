@@ -2,9 +2,9 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from ..utils.laserscan4 import LaserScan, SemLaserScan
+from ..utils.laserscan_BEV1 import LaserScan, SemLaserScan
 
-from .SemanticKitti11 import SemanticKitti
+from .SemanticKitti_BEV2 import SemanticKitti
 
 class Parser():
   # standard conv, BN, relu

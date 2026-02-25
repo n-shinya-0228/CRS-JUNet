@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import os
 
-from lib.utils.laserscan import LaserScan
+from lib.utils.laserscan1 import LaserScan
 import scipy.ndimage as ndimage
 
 # --------- 設定 ---------

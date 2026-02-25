@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from ..utils.laserscan import LaserScan, SemLaserScan
+from ..utils.laserscan1 import LaserScan, SemLaserScan
 import scipy.ndimage as ndimage
 
 EXTENSIONS_SCAN = ['.bin']
