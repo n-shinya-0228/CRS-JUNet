@@ -186,7 +186,7 @@ class UpBlock(nn.Module):
         return x
 
 # -------------------- main net --------------------
-class CRS_JUNet4(nn.Module):
+class CRS_JUNet(nn.Module):
     """
     in_channels: 6  (range, x, y, z, remission, obs_mask)
     nclasses:     20 (SemanticKITTI xentropy IDs)
