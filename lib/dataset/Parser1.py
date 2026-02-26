@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from ..utils.laserscan_BEV1 import LaserScan, SemLaserScan
 
-from .SemanticKitti_BEV3 import SemanticKitti
+from .SemanticKitti_BEV2 import SemanticKitti
 
 class Parser():
   # standard conv, BN, relu
@@ -45,8 +45,7 @@ class Parser():
                                        learning_map_inv=self.learning_map_inv,
                                        sensor=self.sensor,
                                        max_points=self.max_points,
-                                       gt=self.gt,
-                                       is_train=True)
+                                       gt=self.gt)
                                       #  fill_label=True)
 
     self.trainloader = torch.utils.data.DataLoader(self.train_dataset,
