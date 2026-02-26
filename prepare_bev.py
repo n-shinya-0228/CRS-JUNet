@@ -8,7 +8,7 @@ import argparse
 
 # 既存のモジュールをインポート
 from lib.utils.laserscan_BEV1 import SemLaserScan
-from lib.dataset.SemanticKitti_BEV1 import _build_lut
+from lib.dataset.SemanticKitti_BEV3 import _build_lut
 
 def main():
     parser = argparse.ArgumentParser()

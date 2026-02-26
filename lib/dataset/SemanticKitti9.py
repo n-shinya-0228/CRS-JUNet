@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import cv2
 from torch.utils.data import Dataset
-from ..utils.laserscan import LaserScan, SemLaserScan
+from ..utils.laserscan1 import LaserScan, SemLaserScan
 
 EXTENSIONS_SCAN = ['.bin']
 EXTENSIONS_EDGE = ['.png']

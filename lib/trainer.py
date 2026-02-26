@@ -4,6 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
+#trainer_BEV2
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -105,6 +106,7 @@ class Trainer():
         self.logger = logger
         self.pretrained = pretrained
         self.use_mps = use_mps
+        self.scaler = torch.cuda.amp.GradScaler()
 
         # シード
         torch.manual_seed(0)
@@ -136,6 +138,7 @@ class Trainer():
         # Model
         self.model = get_model(ARCH['model']['name'])(
             nclasses=self.parser.get_n_classes())
+        self.model = torch.compile(self.model)
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
                            if p.requires_grad)
@@ -437,8 +440,15 @@ class Trainer():
                                     boundary_gt, proj_mask)
 
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # autocastブロックで囲む
+            with torch.cuda.amp.autocast():
+                outs = model(in_vol5)
+                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+
+            # スケーラーを使ってバックプロパゲーション
+            self.scaler.scale(loss).backward()
+            self.scaler.step(optimizer)
+            self.scaler.update()
 
             # EMA 更新（float tensor のみ）
             self._update_ema()

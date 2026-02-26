@@ -40,7 +40,7 @@ import torch
 import shutil
 import time
 
-from lib.dataset.Parser import Parser
+from lib.dataset.Parser1 import Parser
 
 
 # ------------------------------

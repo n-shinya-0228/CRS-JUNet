@@ -4,6 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
+#trainer_origin
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -21,7 +22,7 @@ import copy  # EMA 用
 from .utils.avgmeter import *
 from .utils.warmupLR import *   # (互換性のために import のみ)
 from .utils.ioueval import *
-from .dataset.Parser import Parser
+from .dataset.Parser1 import Parser
 from .models import *           # get_model(...)
 from .losses import *           # Lovasz_softmax / Depth_Loss など
 

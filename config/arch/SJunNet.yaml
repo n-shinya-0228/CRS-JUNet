@@ -13,7 +13,7 @@ train:
   lr_decay: 0.9        # learning rate decay per epoch after initial cycle (from min lr)
   w_decay: 0.01        # weight decay
   batch_size: 12        # batch size
-  report_batch: 100       # every x batches, report loss
+  report_batch: 1000       # every x batches, report loss
   report_epoch: 1        # every x epochs, report validation set
   epsilon_w: 0.01       # class weight w = 1 / (content + epsilon_w)
                          # sample images (one per batch of the last calculated batch)
@@ -24,8 +24,8 @@ train:
 # backbone parameters
 ################################################################################
 model:
-  name: "CRS_JUNet"  
-  in_channels: 6
+  name: "SJunNet"  
+  in_channels: 5
   dropout: 0.3
   bn_d: 0.01
   use_mps: False
@@ -57,20 +57,18 @@ dataset:
     # fov_down: -25 
     img_prop:
       # width: 512
-      width: 512
-      height: 64
-    img_means: #range,x,y,z,signal
-      - 12.12
-      - 10.88
-      - 0.23
-      - -1.04
-      - 0.21
-    img_stds: #range,x,y,z,signal
-      - 12.32
-      - 11.47
-      - 6.91
-      - 0.86
-      - 0.16
+      width: 256
+      height: 256
+    img_means: # max_z, mean_z, max_r, density
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+    img_stds: 
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
 
     fov_up: 3
     fov_down: -23
