@@ -12,6 +12,7 @@ from .JunNet10 import JunNet10
 from .JunNet11 import JunNet11
 from .JunNet12 import JunNet12
 from .JunNet13 import JunNet13
+from .CRS_JUNet import CRS_JUNet
 from .SJunNet import SJunNet
 from .CRS_JUNet import CRS_JUNet
 

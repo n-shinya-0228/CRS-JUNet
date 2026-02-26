@@ -6,7 +6,7 @@ import os
 import yaml
 # import __init__ as booger
 
-from lib.utils.laserscan import LaserScan, SemLaserScan
+from lib.utils.laserscan1 import LaserScan, SemLaserScan
 from lib.utils.laserscanvis import LaserScanVis
 
 if __name__ == '__main__':

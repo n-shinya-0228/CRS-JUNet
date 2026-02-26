@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import os
 
-from lib.utils.laserscan4 import LaserScan
+from lib.utils.laserscan_BEV1 import LaserScan
 
 # --------- 設定 ---------
 bin_path = "/home/ns/CRS-JUNet/SemanticKitti/sequences/08/velodyne/000001.bin"

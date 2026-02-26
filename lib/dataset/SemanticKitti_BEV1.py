@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from ..utils.laserscan4 import LaserScan, SemLaserScan  # ★ laserscan4.py をインポート
+from ..utils.laserscan_BEV1 import LaserScan, SemLaserScan  # ★ laserscan.py をインポート
 
 def _build_lut(mapdict: dict) -> np.ndarray:
     maxkey = max(mapdict.keys()) if len(mapdict) > 0 else 0
