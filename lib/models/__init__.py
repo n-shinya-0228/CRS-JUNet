@@ -14,7 +14,7 @@ from .JunNet12 import JunNet12
 from .JunNet13 import JunNet13
 from .CRS_JUNet import CRS_JUNet
 from .SJunNet import SJunNet
-
+from .SJunNet2 import SJunNet2
 
 def get_model(model):
     return eval(model)

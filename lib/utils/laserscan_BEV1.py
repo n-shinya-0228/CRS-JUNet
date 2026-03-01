@@ -93,7 +93,7 @@ class LaserScan:
     """Project a pointcloud into a multi-channel Pseudo-image (BEV grid)."""
     
     # 1. グリッドの解像度と範囲
-    res = 0.2
+    res = 0.2  # 20cm grid resolution
     x_min, x_max = 0.0, 51.2
     y_min, y_max = -25.6, 25.6
     

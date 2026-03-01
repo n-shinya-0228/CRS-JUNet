@@ -65,6 +65,17 @@ class SemanticKitti(Dataset):
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
 
+            # 点群の一部（例えば5%）をランダムに消去（ゼロにする）して暗記を防ぐ
+            if torch.rand(1) > 0.5:
+                # proj_tensor の形状が [4, H, W] であると仮定
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
+                proj_tensor = proj_tensor * drop_mask
+
+            # 高さ(max_z, mean_z)や反射強度(densityなど)に微小なノイズを加える
+            if torch.rand(1) > 0.5:
+                noise = torch.randn_like(proj_tensor) * 0.05 # 5%の標準偏差のノイズ
+                proj_tensor = proj_tensor + noise
+
         # Parserの戻り値と合わせるためのダミー変数
         dummy_list = []
         dummy_tensor = torch.tensor(0)
