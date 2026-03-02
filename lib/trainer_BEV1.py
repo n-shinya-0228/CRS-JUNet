@@ -4,6 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
+#trainer_BEV1
 import torch
 import torch.nn as nn
 import torch.optim as optim
