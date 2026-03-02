@@ -7,7 +7,7 @@ import numpy as np
 from lib.models import get_model
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from lib.dataset.SemanticKitti import SemanticKitti
+from lib.dataset.SemanticKitti1 import SemanticKitti
 import torch.nn.functional as F          # 既にあれば不要
 from scipy.spatial import cKDTree        # 追加：高速 k‑d 木
 

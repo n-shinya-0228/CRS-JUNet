@@ -22,7 +22,7 @@ import copy  # EMA 用
 from .utils.avgmeter import *
 from .utils.warmupLR import *   # (互換性のために import のみ)
 from .utils.ioueval import *
-from .dataset.Parser import Parser
+from .dataset.Parser1 import Parser
 from .models import *           # get_model(...)
 from .losses import *           # Lovasz_softmax / Depth_Loss など
 

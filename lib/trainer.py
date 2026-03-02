@@ -6,6 +6,9 @@
 
 #trainer_BEV2
 import torch
+torch.set_float32_matmul_precision('high')
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -106,8 +109,7 @@ class Trainer():
         self.logger = logger
         self.pretrained = pretrained
         self.use_mps = use_mps
-        self.scaler = torch.cuda.amp.GradScaler()
-
+        self.scaler = torch.amp.GradScaler('cuda')
         # シード
         torch.manual_seed(0)
         torch.backends.cudnn.deterministic = True
@@ -138,7 +140,7 @@ class Trainer():
         # Model
         self.model = get_model(ARCH['model']['name'])(
             nclasses=self.parser.get_n_classes())
-        self.model = torch.compile(self.model)
+        self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
                            if p.requires_grad)
@@ -441,15 +443,19 @@ class Trainer():
 
             optimizer.zero_grad()
             # autocastブロックで囲む
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 outs = model(in_vol5)
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
 
             # スケーラーを使ってバックプロパゲーション
             self.scaler.scale(loss).backward()
+
+            self.scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+
             self.scaler.step(optimizer)
             self.scaler.update()
-            
+
             # EMA 更新（float tensor のみ）
             self._update_ema()
 
@@ -482,9 +488,8 @@ class Trainer():
                         update_ratios.append(upd / max(w, 1e-10))
             update_ratios = np.array(update_ratios) if len(
                 update_ratios) else np.array([0.0])
-            update_mean = float(update_ratios.mean())
-            update_std = float(
-                update_ratios.std()) if len(update_ratios) > 1 else 0.0
+            update_mean = float(np.nanmean(update_ratios)) if len(update_ratios) else 0.0
+            update_std = float(np.nanstd(update_ratios)) if len(update_ratios) > 1 else 0.0
             update_ratio_meter.update(update_mean)
 
             if i % report == 0:
