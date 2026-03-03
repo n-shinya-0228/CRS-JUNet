@@ -182,7 +182,7 @@ class Trainer():
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         elif train_loss_type == "focal_gamma":
             self.criterion_main = FocalLoss(
-                weight=self.loss_w, gamma=2.0, ignore_index=0).to(self.device)
+                weight=self.loss_w, gamma=1.0, ignore_index=0).to(self.device)
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         else:
             raise Exception('Loss not defined in config file')
@@ -544,7 +544,7 @@ class Trainer():
                 if self.gpu:
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-                # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
+            
                 in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
                 outs = eval_model(in_vol5)

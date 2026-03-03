@@ -5,17 +5,17 @@ train:
   # loss: "xentropy"       # must be either xentropy or iou
   loss: "focal_gamma"
   max_epochs: 100
-  lr: 0.001               # sgd learning rate
+  lr: 0.0005               # sgd learning rate
   min_lr: 1.0e-5
-  wup_epochs: 3         # warmup during first XX epochs (can be float)
-  cos_epochs: 97
+  wup_epochs: 1         # warmup during first XX epochs (can be float)
+  cos_epochs: 99
   momentum: 0.9          # sgd momentum
   lr_decay: 0.9        # learning rate decay per epoch after initial cycle (from min lr)
   w_decay: 0.05        # weight decay
-  batch_size: 12       # batch size
+  batch_size: 8       # batch size
   report_batch: 200       # every x batches, report loss
   report_epoch: 1        # every x epochs, report validation set
-  epsilon_w: 0.01       # class weight w = 1 / (content + epsilon_w)
+  epsilon_w: 0.05       # class weight w = 1 / (content + epsilon_w)
                          # sample images (one per batch of the last calculated batch)
                          # in log folder
   workers: 4           # number of threads to get data
@@ -26,7 +26,7 @@ train:
 model:
   name: "SJunNet2"  
   in_channels: 5
-  dropout: 0.5
+  dropout: 0.3
   bn_d: 0.01
   use_mps: False
 

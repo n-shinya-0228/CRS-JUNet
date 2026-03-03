@@ -343,7 +343,7 @@ class SJunNet2(nn.Module):
         self,
         in_channels: int = 5,
         nclasses: int = 20,
-        drop: float = 0.2,
+        drop: float = 0.3,
         base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
