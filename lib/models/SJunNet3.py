@@ -53,7 +53,7 @@ class BasicBlock(nn.Module):
                 nn.BatchNorm2d(out_ch),
             )
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         idt = x
         x = self.act(self.bn1(x))
         x = self.conv1(x)
@@ -67,6 +67,14 @@ class BasicBlock(nn.Module):
 
         x = x + idt
         x = self.act(x)
+
+        # ★ 追加: マスクが与えられた場合、点がない場所の特徴量をゼロにリセット
+        if mask is not None:
+            # テンソルのサイズが違う場合（プーリング後など）は、マスクも縮小する
+            if x.shape[-2:] != mask.shape[-2:]:
+                mask = F.interpolate(mask, size=x.shape[-2:], mode='nearest')
+            x = x * mask
+
         return x
 
 
@@ -80,7 +88,9 @@ class ResStage(nn.Module):
             blocks.append(BasicBlock(out_ch, out_ch, stride=1, drop=drop, use_se=use_se))
         self.net = nn.Sequential(*blocks)
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
+        for block in self.net:
+            x = block(x, mask) # ★ 各ブロックにマスクを渡す
         return self.net(x)
 
 
@@ -331,7 +341,7 @@ class ShiftedSWABlock(nn.Module):
         return x
 
 
-class SJunNet2(nn.Module):
+class SJunNet3(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
@@ -405,13 +415,17 @@ class SJunNet2(nn.Module):
 
         s0 = self.stem_feat(feat_in)
         g = torch.sigmoid(self.stem_mask(m))
-        s0 = s0 * (1.0 + self.gate_scale * (g - 0.5))
+        #s0 = s0 * (1.0 + self.gate_scale * (g - 0.5))
+
+        # ★ シンプルに、入力段階で点がない場所を確実にゼロにする
+        s0 = s0 * m
 
         B, _, H, W = x.shape
 
-        s1 = self.enc1(s0)
-        s2 = self.enc2(s1)
-        s3 = self.enc3(s2)
+        # ★ エンコーダーの各ステージにマスクを渡す
+        s1 = self.enc1(s0, m)
+        s2 = self.enc2(s1, m)
+        s3 = self.enc3(s2, m)
 
         b = self.aspp(s3)
         b = self.swa(b)

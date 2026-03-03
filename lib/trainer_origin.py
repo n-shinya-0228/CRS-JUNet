@@ -114,7 +114,6 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-
         # Data
         self.parser = Parser(root=self.datadir,
                              data_cfg=DATA,
@@ -380,7 +379,13 @@ class Trainer():
         if 'boundary' in outs and boundary_gt is not None:
             bmap = self.boundary_criterion(
                 outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
-            pmask = proj_mask.unsqueeze(1).float()           # (B,1,H,W)
+
+             # ★ マスクの次元合わせ
+            if proj_mask.dim() == 3:
+                pmask = proj_mask.unsqueeze(1).float()
+            else:
+                pmask = proj_mask.float()
+           
             loss_b = (bmap * pmask).sum() / (pmask.sum() + 1e-6)
             loss = loss + self.w_boundary * loss_b
 
@@ -411,12 +416,22 @@ class Trainer():
 
             # boundary target（無効画素はここで除外）
             boundary_gt = self._compute_boundary_gt(proj_labels)
-            boundary_gt = boundary_gt * proj_mask.unsqueeze(1).float()
+            # ★ マスクの次元合わせ
+            if proj_mask.dim() == 3:
+                proj_mask_exp = proj_mask.unsqueeze(1).float()
+            else:
+                proj_mask_exp = proj_mask.float()
+
+            boundary_gt = boundary_gt * proj_mask_exp
+            
             if self.gpu:
                 boundary_gt = boundary_gt.cuda(non_blocking=True)
 
+            # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
+            in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+
             # forward (JunNet / ChatNet4 returns dict)
-            outs = model(in_vol)
+            outs = model(in_vol5)
 
             # loss（boundary は proj_mask でマスク平均）
             loss = self._mix_losses(outs, proj_labels,
@@ -504,11 +519,21 @@ class Trainer():
                         non_blocking=True).long()
 
                 boundary_gt = self._compute_boundary_gt(proj_labels)
-                boundary_gt = boundary_gt * proj_mask.unsqueeze(1).float()
+                # ★ マスクの次元合わせ
+                if proj_mask.dim() == 3:
+                    proj_mask_exp = proj_mask.unsqueeze(1).float()
+                else:
+                    proj_mask_exp = proj_mask.float()
+
+                boundary_gt = boundary_gt * proj_mask_exp
+
                 if self.gpu:
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-                outs = eval_model(in_vol)
+                # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
+                in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+
+                outs = eval_model(in_vol5)
 
                 loss = self._mix_losses(
                     outs, proj_labels, boundary_gt, proj_mask)

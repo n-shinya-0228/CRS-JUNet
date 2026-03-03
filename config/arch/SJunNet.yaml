@@ -24,9 +24,9 @@ train:
 # backbone parameters
 ################################################################################
 model:
-  name: "SJunNet2"  
+  name: "SJunNet3"  
   in_channels: 5
-  dropout: 0.5
+  dropout: 0.3
   bn_d: 0.01
   use_mps: False
 

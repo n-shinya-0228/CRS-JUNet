@@ -45,23 +45,6 @@ class SemanticKitti(Dataset):
         mask_t = data['mask_t']           # [1, 256, 256]
         labels_t = data['labels_t']       # [256, 256]
 
-        # ★ 追加：データの正規化 (Normalization)
-        # 各チャネルの平均(mean)と標準偏差(std)で割ってスケールを揃える
-        # ※ ここでは近似的な固定値を使用します（厳密にはデータセット全体の平均を計算するのがベストですが、これで十分機能します）
-        
-        # ch0: max_z (だいたい -3 ~ +5) -> mean: 1.0, std: 3.0
-        proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
-        
-        # ch1: mean_z (だいたい -3 ~ +2) -> mean: -0.5, std: 2.0
-        proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
-        
-        # ch2: max_r (だいたい 0 ~ 1 または 0 ~ 255)
-        # SemanticKITTIのremissionは通常0~1ですが、念のためスケールを調整
-        proj_tensor[2] = proj_tensor[2] / (torch.max(proj_tensor[2]) + 1e-5) 
-        
-        # ch3: density (0 ~ 数十)
-        proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0 # 外れ値をカットして0~1に
-
         if self.is_train:
             # 1. ランダム水平反転 (50%の確率)
             if torch.rand(1) > 0.5:
@@ -81,6 +64,32 @@ class SemanticKitti(Dataset):
                 proj_tensor = torch.rot90(proj_tensor, k, [1, 2])
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
+
+            # 点群の一部（例えば5%）をランダムに消去（ゼロにする）して暗記を防ぐ
+            if torch.rand(1) > 0.5:
+                # proj_tensor の形状が [4, H, W] であると仮定
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
+                proj_tensor = proj_tensor * drop_mask
+
+            # 高さ(max_z, mean_z)や反射強度(densityなど)に微小なノイズを加える
+            if torch.rand(1) > 0.5:
+                noise = torch.randn_like(proj_tensor) * 0.05 # 5%の標準偏差のノイズ
+                proj_tensor = proj_tensor + noise
+
+            # 画像の一部(例えば16x16〜48x48の矩形)を1〜3箇所、完全にゼロにする
+            if torch.rand(1) > 0.5:
+                num_holes = torch.randint(1, 4, (1,)).item() # 1〜3箇所の穴をあける
+                for _ in range(num_holes):
+                    # 穴のサイズをランダムに決定
+                    h_size = torch.randint(16, 48, (1,)).item()
+                    w_size = torch.randint(16, 48, (1,)).item()
+                    # 穴の位置をランダムに決定
+                    top = torch.randint(0, proj_tensor.shape[1] - h_size, (1,)).item()
+                    left = torch.randint(0, proj_tensor.shape[2] - w_size, (1,)).item()
+                    
+                    # 特徴量とマスクを強制的にゼロ(無効)にする
+                    proj_tensor[:, top:top+h_size, left:left+w_size] = 0.0
+                    mask_t[:, top:top+h_size, left:left+w_size] = 0.0
 
         # Parserの戻り値と合わせるためのダミー変数
         dummy_list = []

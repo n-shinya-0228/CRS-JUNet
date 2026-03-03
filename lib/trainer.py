@@ -544,7 +544,7 @@ class Trainer():
                 if self.gpu:
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-                # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
+            
                 in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
                 outs = eval_model(in_vol5)
