@@ -182,7 +182,7 @@ class Trainer():
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         elif train_loss_type == "focal_gamma":
             self.criterion_main = FocalLoss(
-                weight=self.loss_w, gamma=2.0, ignore_index=0).to(self.device)
+                weight=self.loss_w, gamma=1.0, ignore_index=0).to(self.device)
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         else:
             raise Exception('Loss not defined in config file')
