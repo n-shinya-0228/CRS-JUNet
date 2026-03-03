@@ -9,3 +9,4 @@ lib/models/_pycache_/
 lib/postproc/_pycache_/
 lib/utils/_pycache_/
 pyproject.tpml
+*.pyc
