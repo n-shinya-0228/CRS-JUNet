@@ -12,7 +12,7 @@ from typing import Tuple
 def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
     layers = [
         nn.Conv2d(in_ch, out_ch, k, s, p, dilation=d, groups=groups, bias=False),
-        nn.BatchNorm2d(out_ch),
+        nn.InstanceNorm2d(out_ch, affine=True),
     ]
     if act:
         layers.append(nn.ReLU(inplace=True))
@@ -35,11 +35,11 @@ class SE(nn.Module):
 class BasicBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride=1, drop=0.0, use_se=True):
         super().__init__()
-        self.bn1 = nn.BatchNorm2d(in_ch)
+        self.bn1 = nn.InstanceNorm2d(in_ch, affine=True)
         self.act = nn.ReLU(inplace=True)
 
         self.conv1 = nn.Conv2d(in_ch, out_ch, 3, stride, 1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.bn2 = nn.InstanceNorm2d(out_ch, affine=True)
 
         self.drop = nn.Dropout2d(drop) if drop > 0 else nn.Identity()
 
@@ -50,7 +50,7 @@ class BasicBlock(nn.Module):
         if stride != 1 or in_ch != out_ch:
             self.down = nn.Sequential(
                 nn.Conv2d(in_ch, out_ch, 1, stride, 0, bias=False),
-                nn.BatchNorm2d(out_ch),
+                nn.InstanceNorm2d(out_ch, affine=True),
             )
 
     def forward(self, x, mask=None):
@@ -341,7 +341,7 @@ class ShiftedSWABlock(nn.Module):
         return x
 
 
-class SJunNet3(nn.Module):
+class SJunNet4(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
