@@ -91,7 +91,7 @@ class ResStage(nn.Module):
     def forward(self, x, mask=None):
         for block in self.net:
             x = block(x, mask) # ★ 各ブロックにマスクを渡す
-        return self.net(x)
+        return x
 
 
 class LKA(nn.Module):
