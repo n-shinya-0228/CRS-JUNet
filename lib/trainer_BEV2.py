@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_BEV3
+#trainer_BEV2
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -365,23 +365,19 @@ class Trainer():
     def _mix_losses(self, outs, labels, boundary_gt, proj_mask):
         # outs is dict from JunNet / ChatNet4
         logits = outs['logits']
-        # ★ 修正後：メインのロスを計算しない（または極端に軽くする）
-        # focal loss は補助的に少しだけ使う
-        loss_ce = self.criterion_main(logits, labels)
-        loss = 0.1 * loss_ce  # 影響力を 10分の1 に下げる
+        loss = self.criterion_main(logits, labels)
 
-        # aux (補助ロスも影響力を下げる)
+        # aux
         if 'aux2' in outs:
-            loss = loss + 0.05 * self.criterion_main(outs['aux2'], labels) # 0.30 -> 0.05
+            loss = loss + self.w_aux2 * self.criterion_main(
+                outs['aux2'], labels)
         if 'aux4' in outs:
-            loss = loss + 0.05 * self.criterion_main(outs['aux4'], labels) # 0.15 -> 0.05
+            loss = loss + self.w_aux4 * self.criterion_main(
+                outs['aux4'], labels)
 
-        # ★ Lovasz を「主役」に引き上げる！
+        # Lovasz on probs (ignore=0)
         probs = torch.softmax(logits, dim=1)
-        loss_lovasz = self.lovasz(probs, labels)
-        
-        # 影響力を 0.50 から 1.5 または 2.0 に大幅アップ
-        loss = loss + 1.5 * loss_lovasz
+        loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
         if 'boundary' in outs and boundary_gt is not None:
