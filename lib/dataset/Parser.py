@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 from ..utils.laserscan_BEV1 import LaserScan, SemLaserScan
 
-from .SemanticKitti_BEV6 import SemanticKitti
+from .SemanticKitti_BEV8 import SemanticKitti
 
 class Parser():
   # standard conv, BN, relu

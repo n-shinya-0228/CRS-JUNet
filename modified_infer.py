@@ -42,7 +42,17 @@ def main():
         ARCH['model']['dropout']
     )
     checkpoint = torch.load(FLAGS.pretrained, weights_only=False)               #torch.load でチェックポイントを読み込み
-    model.load_state_dict(checkpoint['model'])
+
+    # ★ 追加: `_orig_mod.` という余分な文字を削って、元の名前に戻す！
+    state_dict = checkpoint['model']
+    clean_state_dict = {}
+
+    for k, v in state_dict.items():
+        new_key = k.replace('_orig_mod.', '')  # _orig_mod. を消す
+        clean_state_dict[new_key] = v
+
+    model.load_state_dict(clean_state_dict) # ✅ 綺麗にした辞書を読み込む
+
     model = model.eval().cuda()                                                 #eval() にして推論モード、.cuda() で GPU へ
 
     # Output folders
