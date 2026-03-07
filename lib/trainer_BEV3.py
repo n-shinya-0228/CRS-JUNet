@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_BEV4
+#trainer_BEV3
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -130,19 +130,10 @@ class Trainer():
         for cl, freq in DATA["content"].items():
             x_cl = self.parser.to_xentropy(cl)
             content[x_cl] += freq
-        # ★ 修正：重みが極端になりすぎないように対数(log)スムージングを適用
-        # 頻度を全体の割合（確率）に変換
-        prob = content / (content.sum() + 1e-6)
-        # 対数を使ってマイルドな逆数を計算し、さらに epsilon_w で微調整
-        self.loss_w = 1 / (torch.log(prob + 1.02) + epsilon_w)
-        
-        # 重みの最大値が大きくなりすぎるのを防ぐ（最大でも100程度に抑える）
-        self.loss_w = torch.clamp(self.loss_w, max=100.0)
-
+        self.loss_w = 1 / (content + epsilon_w)
         for x_cl, w in enumerate(self.loss_w):
             if DATA["learning_ignore"][x_cl]:
-                self.loss_w[x_cl] = 0.0
-                
+                self.loss_w[x_cl] = 0
         self.logger.info("Loss weights from content: %s" %
                          (self.loss_w.data.cpu().numpy().tolist(),))
 
