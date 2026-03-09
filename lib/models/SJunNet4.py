@@ -121,7 +121,8 @@ class ASPP(nn.Module):
 
         self.image_pool = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            conv_bn_act(in_ch, out_ch, k=1, s=1, p=0),
+            nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False), # ✅ conv_bn_act を分解して InstanceNorm を除去
+            nn.ReLU(inplace=True),
         )
         self.proj = conv_bn_act(out_ch * (len(rates) + 1), out_ch, k=1, s=1, p=0)
 
@@ -357,7 +358,7 @@ class SJunNet4(nn.Module):
         base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
-        swa_window: Tuple[int, int] = (16, 16),
+        swa_window: Tuple[int, int] = (32, 32),
         return_aux: bool = True,
     ):
         super().__init__()

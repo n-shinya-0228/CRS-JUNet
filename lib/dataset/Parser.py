@@ -3,7 +3,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from ..utils.laserscan_BEV1 import LaserScan, SemLaserScan
+from ..utils.laserscan_BEV2 import LaserScan, SemLaserScan
 
 from .SemanticKitti_BEV8 import SemanticKitti
 
