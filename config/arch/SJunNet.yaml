@@ -25,7 +25,7 @@ train:
 ################################################################################
 model:
   name: "SJunNet4"  
-  in_channels: 5
+  in_channels: 6
   dropout: 0.3
   bn_d: 0.01
   use_mps: False

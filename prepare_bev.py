@@ -7,7 +7,7 @@ from tqdm import tqdm
 import argparse
 
 # 既存のモジュールをインポート
-from lib.utils.laserscan_BEV1 import SemLaserScan
+from lib.utils.laserscan_BEV2 import SemLaserScan
 from lib.dataset.SemanticKitti_BEV1 import _build_lut
 
 def main():
@@ -35,7 +35,7 @@ def main():
         lpath = os.path.join(args.dataset, "sequences", seq, "labels")
         
         # 保存先フォルダを作成（sequences/00/bev_512 など）
-        save_path = os.path.join(args.dataset, "sequences", seq, "bev_512")
+        save_path = os.path.join(args.dataset, "sequences", seq, "bev_512_6ch")
         os.makedirs(save_path, exist_ok=True)
 
         if not os.path.exists(vpath):
