@@ -121,7 +121,8 @@ class ASPP(nn.Module):
 
         self.image_pool = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False), # ✅ conv_bn_act を分解して InstanceNorm を除去
+            # ★ conv_bn_act を使わず、直接 Conv2d と ReLU を書く（InstanceNormを回避）
+            nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
         )
         self.proj = conv_bn_act(out_ch * (len(rates) + 1), out_ch, k=1, s=1, p=0)

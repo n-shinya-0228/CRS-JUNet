@@ -9,7 +9,7 @@ from shutil import copyfile
 import os
 import shutil
 
-# from lib.user import *
+from lib.user import *
 
 
 if __name__ == '__main__':
@@ -90,27 +90,24 @@ if __name__ == '__main__':
     for seq in DATA["split"]["train"]:
       seq = '{0:02d}'.format(int(seq))
       print("train", seq)
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq))
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"))
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq), exist_ok=True)
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"), exist_ok=True)
+      
     for seq in DATA["split"]["valid"]:
       seq = '{0:02d}'.format(int(seq))
       print("valid", seq)
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq))
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"))
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq), exist_ok=True)
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"), exist_ok=True)
+      
     for seq in DATA["split"]["test"]:
       seq = '{0:02d}'.format(int(seq))
       print("test", seq)
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq))
-      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"))
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq), exist_ok=True)
+      os.makedirs(os.path.join(FLAGS.log, "sequences", seq, "predictions"), exist_ok=True)
   except Exception as e:
     print(e)
     print("Error creating log directory. Check permissions!")
     raise
-
-  except Exception as e:
-    print(e)
-    print("Error creating log directory. Check permissions!")
-    quit()
 
   # create user and infer dataset
   user = User(ARCH, DATA, FLAGS.dataset, FLAGS.log, FLAGS.checkpoint)
