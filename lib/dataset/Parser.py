@@ -3,8 +3,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-# 先ほど完成した SemanticKitti_BEV8 (512x512 .pt 読み込み) をインポート
-from .SemanticKitti_BEV8 import SemanticKitti
+from .SemanticKitti_BEV10 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
