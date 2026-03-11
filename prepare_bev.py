@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import argparse
+import gc
 
 # 既存のモジュールをインポート
 from lib.utils.laserscan_BEV2 import SemLaserScan
@@ -53,14 +54,16 @@ def main():
             if os.path.exists(save_file):
                 continue # 既に作成済みの場合はスキップ
 
-            # 1. laserscan4.py で読み込み & BEV投影
+            # 1. laserscan_BEV2.py で読み込み & BEV投影
             scan = SemLaserScan(color_map, project=True)
             scan.open_scan(bin_path)
             
             has_label = os.path.exists(label_path)
             if has_label:
                 scan.open_label(label_path)
-                scan.proj_sem_label = lut_map[scan.proj_sem_label] # 学習用IDに変換
+                # ★ 追加: lut_mapのサイズ(最大インデックス)をはみ出さないように安全装置を入れる
+                safe_label = np.clip(scan.proj_sem_label, 0, lut_map.shape[0] - 1)
+                scan.proj_sem_label = lut_map[safe_label] # 安全に変換
             else:
                 scan.proj_sem_label = np.zeros((scan.proj_H, scan.proj_W), dtype=np.int32)
 
@@ -77,6 +80,10 @@ def main():
                 'labels_t': labels_t.clone()
             }
             torch.save(save_dict, save_file)
+
+            # ★ 追加: 1つのファイルの処理が終わるたびにメモリを強制解放する
+            del scan, pseudo_image_np, proj_tensor, mask_t, labels_t, save_dict
+            gc.collect()
 
 if __name__ == '__main__':
     main()

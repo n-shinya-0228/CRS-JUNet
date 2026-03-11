@@ -106,7 +106,11 @@ class LaserScan:
     self.proj_remission = np.full((H, W), -1, dtype=np.float32)
     self.proj_idx = np.full((H, W), -1, dtype=np.int32)
     self.proj_mask = np.zeros((H, W), dtype=np.int32)
+<<<<<<< HEAD
     pseudo_image = np.zeros((H, W, 5), dtype=np.float32) # ★5チャネルに変更
+=======
+    pseudo_image = np.zeros((H, W, 4), dtype=np.float32)
+>>>>>>> origin/lab_desk
 
     # ラベル用の配列も新しい H, W (256x256) で初期化し直す！
     if hasattr(self, 'proj_sem_label'):
@@ -156,6 +160,7 @@ class LaserScan:
         cell_z = z_f[cell_mask]
         cell_r = r_f[cell_mask]
         
+<<<<<<< HEAD
         # ★ Z軸の最大値と最小値を取得
         max_z = np.max(cell_z)
         min_z = np.min(cell_z)
@@ -166,6 +171,12 @@ class LaserScan:
         pseudo_image[u_y[i], u_x[i], 3] = counts[i] / 100.0
         # ★ 新規チャネル：高低差（縦の長さ）を5番目のチャネルに格納
         pseudo_image[u_y[i], u_x[i], 4] = max_z - min_z
+=======
+        pseudo_image[u_y[i], u_x[i], 0] = np.max(cell_z)
+        pseudo_image[u_y[i], u_x[i], 1] = np.mean(cell_z)
+        pseudo_image[u_y[i], u_x[i], 2] = np.max(cell_r)
+        pseudo_image[u_y[i], u_x[i], 3] = counts[i] / 100.0
+>>>>>>> origin/lab_desk
 
         # BEVにおいては「そのピクセルの中で一番高い位置にある点」を代表点として扱うのが一般的です
         max_idx_in_cell = np.argmax(cell_z)
@@ -234,6 +245,10 @@ class SemLaserScan(LaserScan):
     if label.shape[0] == self.points.shape[0]:
       self.sem_label = label & 0xFFFF
       self.inst_label = label >> 16
+<<<<<<< HEAD
+=======
+      
+>>>>>>> origin/lab_desk
     else:
       print("Points shape: ", self.points.shape)
       print("Label shape: ", label.shape)
@@ -241,6 +256,13 @@ class SemLaserScan(LaserScan):
 
     assert ((self.sem_label + (self.inst_label << 16) == label).all())
 
+<<<<<<< HEAD
+=======
+    # ★ 追加: カラーマップのサイズを超えないように安全にクリッピング（制限）する
+    max_sem_id = self.sem_color_lut.shape[0] - 1
+    self.sem_label = np.clip(self.sem_label, 0, max_sem_id)
+
+>>>>>>> origin/lab_desk
     if self.project:
       self.do_label_projection()
 

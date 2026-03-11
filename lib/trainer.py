@@ -4,7 +4,11 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
+<<<<<<< HEAD
 #trainer_BEV2
+=======
+#trainer_BEV5
+>>>>>>> origin/lab_desk
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -130,10 +134,27 @@ class Trainer():
         for cl, freq in DATA["content"].items():
             x_cl = self.parser.to_xentropy(cl)
             content[x_cl] += freq
+<<<<<<< HEAD
         self.loss_w = 1 / (content + epsilon_w)
         for x_cl, w in enumerate(self.loss_w):
             if DATA["learning_ignore"][x_cl]:
                 self.loss_w[x_cl] = 0
+=======
+            
+        # ★ マイルドで安全な重み付けに変更
+        # 頻度を全体の割合（確率）に変換してスケールを合わせる
+        prob = content / (content.sum() + 1e-6)
+        
+        # 安全な逆数を計算（epsilon_w は YAMLから 0.05 を読み込む想定）
+        self.loss_w = 1 / (prob + epsilon_w)
+        
+        # ★ 超重要：ペナルティの最大値を「20.0倍」に抑え込み、NaN発散を完全に防ぐ！
+        self.loss_w = torch.clamp(self.loss_w, max=20.0)
+
+        for x_cl, w in enumerate(self.loss_w):
+            if DATA["learning_ignore"][x_cl]:
+                self.loss_w[x_cl] = 0.0
+>>>>>>> origin/lab_desk
         self.logger.info("Loss weights from content: %s" %
                          (self.loss_w.data.cpu().numpy().tolist(),))
 
