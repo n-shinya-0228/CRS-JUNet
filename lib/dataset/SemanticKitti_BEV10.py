@@ -24,7 +24,7 @@ class SemanticKitti(Dataset):
         # 事前計算した 'bev' フォルダ内の .pt ファイルを列挙
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "bev_512_6ch")
+            bev_path = os.path.join(self.root, seq, "bev_256_6ch")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
