@@ -36,7 +36,7 @@ def main():
         lpath = os.path.join(args.dataset, "sequences", seq, "labels")
         
         # 保存先フォルダを作成（sequences/00/bev_512 など）
-        save_path = os.path.join(args.dataset, "sequences", seq, "bev_512_6ch")
+        save_path = os.path.join(args.dataset, "sequences", seq, "bev_256_6ch")
         os.makedirs(save_path, exist_ok=True)
 
         if not os.path.exists(vpath):
