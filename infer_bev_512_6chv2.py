@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy.spatial import cKDTree
 
 # ★ BEV投影の心臓部（学習時と同じもの）をインポート
-from lib.utils.laserscan_BEV1 import SemLaserScan
+from lib.utils.laserscan_BEV2 import SemLaserScan
 
 def remap_to_original_labels(predictions, learning_map_inv):
     """モデル出力のラベルをSemanticKITTIの元のラベルIDに戻す"""
@@ -19,7 +19,7 @@ def remap_to_original_labels(predictions, learning_map_inv):
     return lut[predictions]
 
 def main():
-    parser = argparse.ArgumentParser("./infer_bev_512v2.py")
+    parser = argparse.ArgumentParser("./infer_bev_512_6ch.py")
     parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--arch_cfg', type=str, required=True)
     parser.add_argument('--data_cfg', type=str, required=True)
@@ -70,17 +70,34 @@ def main():
             for scan_file in tqdm(scan_files):
                 bin_path = os.path.join(vpath, scan_file)
                 
-                # 1. BEV画像の生成（学習時と全く同じ処理）
+                # 1. BEV画像の生成
+                # ★ 注意: lib.utils.laserscan_BEV1 が 5チャネル（+マスクで6ch）出力に対応している必要があります
                 scan = SemLaserScan(DATA["color_map"], project=True)
                 scan.open_scan(bin_path)
                 
-                # 正規化処理（データセットクラスに書いてあったものと同じ）
-                pseudo_image_np = scan.pseudo_image.transpose(2, 0, 1) # [4, 512, 512]
+                # 疑似画像をPyTorchテンソルに変換 [C, H, W]
+                pseudo_image_np = scan.pseudo_image.transpose(2, 0, 1) 
                 proj_tensor = torch.from_numpy(pseudo_image_np).float()
+                
+                # ★ 学習用ローダー(SemanticKitti_BEV10.py)と完全に同じ「安全クリッピング正規化」
+                # 1. Z軸関連 (ch0, ch1) 
+                proj_tensor[0] = torch.clamp(proj_tensor[0], -10.0, 10.0)
                 proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
+                
+                proj_tensor[1] = torch.clamp(proj_tensor[1], -10.0, 10.0)
                 proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
-                proj_tensor[2] = proj_tensor[2] / (torch.max(proj_tensor[2]) + 1e-5) 
+                
+                # 2. 反射強度 (ch2)
+                max_r = torch.max(proj_tensor[2])
+                if max_r > 0.0:
+                    proj_tensor[2] = proj_tensor[2] / max_r
+                proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
+                
+                # 3. Density (ch3) 
                 proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
+
+                # 4. 高低差 (ch4) 
+                proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 5.0) / 5.0
 
                 # ★ 1. マスク(1チャネル)を作成
                 mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float() # [1, 512, 512]
@@ -121,10 +138,14 @@ def main():
                 proj_x = scan.proj_x.flatten().astype(np.int32)
                 proj_y = scan.proj_y.flatten().astype(np.int32)
                 
-                # 範囲外のアクセスを防ぐためのマスク
-                valid_mask = (proj_x >= 0) & (proj_x < 512) & (proj_y >= 0) & (proj_y < 512)
+                # ★ バグ修正：物理的な座標で「本当にBEVの枠内に入っていた点」だけを正確にマスクする！
+                scan_x = scan.points[:, 0]
+                scan_y = scan.points[:, 1]
                 
-                # 有効な点にラベルを割り当て
+                # x: 0.0 ~ 51.2m, y: -25.6 ~ 25.6m (BEV作成時のパラメータと完全に一致させる)
+                valid_mask = (scan_x >= 0.0) & (scan_x < 51.2) & (scan_y >= -25.6) & (scan_y < 25.6)
+                
+                # BEVの枠内だった点にだけラベルを割り当て、枠外は 0 (missing) のまま残す
                 final_pred[valid_mask] = pred_2d[proj_y[valid_mask], proj_x[valid_mask]]
 
                 # 4. 改良版KNN補完 (k=1, 距離制限付き)
@@ -137,8 +158,8 @@ def main():
                         tree = cKDTree(ref_xy)
                         qry_xy = scan.points[missing_mask, :2]
                         
-                        # ★ k=1 に変更し、0.5メートル(50cm)以内の点だけを参照する制限を追加！
-                        dists, idxs = tree.query(qry_xy, k=1, distance_upper_bound=0.5, workers=-1)
+                        # 無制限ではなく、3.0m（300cm）以内の点だけを補完する
+                        dists, idxs = tree.query(qry_xy, k=1, distance_upper_bound=3.0, workers=-1)
                         
                         # 制限距離内（dists が inf でない）の有効な点だけを抽出
                         valid_knn = dists != np.inf

@@ -10,7 +10,7 @@ import torch
 #import __init__ as booger
 
 from lib.utils.ioueval import iouEval
-from lib.utils.laserscan1 import SemLaserScan
+from lib.utils.laserscan_BEV2 import SemLaserScan
 
 # possible splits
 splits = ["train", "valid", "test"]
