@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy.spatial import cKDTree
 
 # ★ BEV投影の心臓部（学習時と同じもの）をインポート
-from lib.utils.laserscan_BEV1 import SemLaserScan
+from lib.utils.laserscan_BEV2 import SemLaserScan
 
 def remap_to_original_labels(predictions, learning_map_inv):
     """モデル出力のラベルをSemanticKITTIの元のラベルIDに戻す"""
@@ -19,7 +19,7 @@ def remap_to_original_labels(predictions, learning_map_inv):
     return lut[predictions]
 
 def main():
-    parser = argparse.ArgumentParser("./infer_bev_512v2.py")
+    parser = argparse.ArgumentParser("./infer_bev_512_6ch.py")
     parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--arch_cfg', type=str, required=True)
     parser.add_argument('--data_cfg', type=str, required=True)
@@ -70,17 +70,34 @@ def main():
             for scan_file in tqdm(scan_files):
                 bin_path = os.path.join(vpath, scan_file)
                 
-                # 1. BEV画像の生成（学習時と全く同じ処理）
+                # 1. BEV画像の生成
+                # ★ 注意: lib.utils.laserscan_BEV1 が 5チャネル（+マスクで6ch）出力に対応している必要があります
                 scan = SemLaserScan(DATA["color_map"], project=True)
                 scan.open_scan(bin_path)
                 
-                # 正規化処理（データセットクラスに書いてあったものと同じ）
-                pseudo_image_np = scan.pseudo_image.transpose(2, 0, 1) # [4, 512, 512]
+                # 疑似画像をPyTorchテンソルに変換 [C, H, W]
+                pseudo_image_np = scan.pseudo_image.transpose(2, 0, 1) 
                 proj_tensor = torch.from_numpy(pseudo_image_np).float()
+                
+                # ★ 学習用ローダー(SemanticKitti_BEV10.py)と完全に同じ「安全クリッピング正規化」
+                # 1. Z軸関連 (ch0, ch1) 
+                proj_tensor[0] = torch.clamp(proj_tensor[0], -10.0, 10.0)
                 proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
+                
+                proj_tensor[1] = torch.clamp(proj_tensor[1], -10.0, 10.0)
                 proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
-                proj_tensor[2] = proj_tensor[2] / (torch.max(proj_tensor[2]) + 1e-5) 
+                
+                # 2. 反射強度 (ch2)
+                max_r = torch.max(proj_tensor[2])
+                if max_r > 0.0:
+                    proj_tensor[2] = proj_tensor[2] / max_r
+                proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
+                
+                # 3. Density (ch3) 
                 proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
+
+                # 4. 高低差 (ch4) 
+                proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 5.0) / 5.0
 
                 # ★ 1. マスク(1チャネル)を作成
                 mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float() # [1, 512, 512]

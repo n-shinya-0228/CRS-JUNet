@@ -19,7 +19,7 @@ def remap_to_original_labels(predictions, learning_map_inv):
     return lut[predictions]
 
 def main():
-    parser = argparse.ArgumentParser("./infer_bev_512.py")
+    parser = argparse.ArgumentParser("./infer_bev_512v3.py")
     parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--arch_cfg', type=str, required=True)
     parser.add_argument('--data_cfg', type=str, required=True)

@@ -11,7 +11,7 @@
 
 - 推論
 
-  `uv run python infer_bev_512v2.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
+  `uv run python infer_bev_512v3.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
 
 - 評価　
 
