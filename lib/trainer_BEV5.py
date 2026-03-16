@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar
+#trainer_BEV5
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -117,52 +117,6 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-
-        # === ここから追加：設定とモデルの自動バックアップ ===
-        import shutil
-        import sys
-
-        # 1. ログディレクトリの作成（念のため）
-        os.makedirs(self.log, exist_ok=True)
-
-        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得してコピー
-        # sys.argv から '--arch_cfg' の次の要素を探す
-        yaml_path = None
-        for i, arg in enumerate(sys.argv):
-            if arg == '--arch_cfg' and i + 1 < len(sys.argv):
-                yaml_path = sys.argv[i + 1]
-                break
-        
-        if yaml_path and os.path.exists(yaml_path):
-            backup_yaml = osp.join(self.log, osp.basename(yaml_path))
-            shutil.copy(yaml_path, backup_yaml)
-            self.logger.info(f"Backed up config: {yaml_path} -> {backup_yaml}")
-
-        # 3. 使用しているモデルのコード（.py）をコピー
-        # ARCH['model']['name'] (例: 'SJunNet4') に対応するファイルを lib/models/ から探す
-        model_name = self.ARCH['model']['name']
-        model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        
-        if os.path.exists(model_py_path):
-            backup_model = osp.join(self.log, f"{model_name}.py")
-            shutil.copy(model_py_path, backup_model)
-            self.logger.info(f"Backed up model: {model_py_path} -> {backup_model}")
-        else:
-            self.logger.warning(f"Model file not found for backup: {model_py_path}")
-        
-        # 4. データセットのコード (.py) のバックアップ ★ここを追加
-        # ※ 今使っているファイル名に合わせてください
-        dataset_name = 'SemanticKitti_Polar1.py' 
-        dataset_py_path = osp.join('lib', 'dataset', dataset_name)
-        
-        if os.path.exists(dataset_py_path):
-            backup_dataset = osp.join(self.log, dataset_name)
-            shutil.copy(dataset_py_path, backup_dataset)
-            self.logger.info(f"Backed up dataset: {dataset_py_path} -> {backup_dataset}")
-        else:
-            self.logger.warning(f"Dataset file not found for backup: {dataset_py_path}")
-        # === ここまで追加 ===
-
         # Data
         self.parser = Parser(root=self.datadir,
                              data_cfg=DATA,
