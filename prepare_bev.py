@@ -8,7 +8,7 @@ import argparse
 import gc
 
 # 既存のモジュールをインポート
-from lib.utils.laserscan_Porar1 import SemLaserScan
+from lib.utils.laserscan_Polar1 import SemLaserScan
 from lib.dataset.SemanticKitti_BEV1 import _build_lut
 
 def main():
