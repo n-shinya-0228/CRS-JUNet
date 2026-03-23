@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar2
+#trainer_Polar1
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -302,7 +302,7 @@ class Trainer():
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界Lossを完全に無効化
+        self.w_boundary = 0.20
 
     # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
@@ -430,7 +430,7 @@ class Trainer():
         loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
-        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None: # ★ 条件を追加
+        if 'boundary' in outs and boundary_gt is not None:
             bmap = self.boundary_criterion(
                 outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
 
@@ -468,20 +468,18 @@ class Trainer():
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
 
+            # boundary target（無効画素はここで除外）
+            boundary_gt = self._compute_boundary_gt(proj_labels)
             # ★ マスクの次元合わせ
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
             else:
                 proj_mask_exp = proj_mask.float()
 
-            # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
-            if self.w_boundary > 0:
-                boundary_gt = self._compute_boundary_gt(proj_labels)
-                boundary_gt = boundary_gt * proj_mask_exp
-                if self.gpu:
-                    boundary_gt = boundary_gt.cuda(non_blocking=True)
-            else:
-                boundary_gt = None
+            boundary_gt = boundary_gt * proj_mask_exp
+            
+            if self.gpu:
+                boundary_gt = boundary_gt.cuda(non_blocking=True)
 
             # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
             in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
@@ -581,29 +579,28 @@ class Trainer():
                     in_vol = in_vol.cuda()
                     proj_mask = proj_mask.cuda()
                 if self.gpu:
-                    proj_labels = proj_labels.cuda(non_blocking=True).long()
+                    proj_labels = proj_labels.cuda(
+                        non_blocking=True).long()
 
+                boundary_gt = self._compute_boundary_gt(proj_labels)
                 # ★ マスクの次元合わせ
                 if proj_mask.dim() == 3:
                     proj_mask_exp = proj_mask.unsqueeze(1).float()
                 else:
                     proj_mask_exp = proj_mask.float()
 
-                # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
-                if self.w_boundary > 0:
-                    boundary_gt = self._compute_boundary_gt(proj_labels)
-                    boundary_gt = boundary_gt * proj_mask_exp
-                    if self.gpu:
-                        boundary_gt = boundary_gt.cuda(non_blocking=True)
-                else:
-                    boundary_gt = None
+                boundary_gt = boundary_gt * proj_mask_exp
 
-                # ★ in_vol と proj_mask_exp を結合して 5ch にする
+                if self.gpu:
+                    boundary_gt = boundary_gt.cuda(non_blocking=True)
+
+            
                 in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
                 outs = eval_model(in_vol5)
 
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(
+                    outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)
