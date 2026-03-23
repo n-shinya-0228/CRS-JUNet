@@ -118,50 +118,44 @@ class Trainer():
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
 
-        # === ここから追加：設定とモデルの自動バックアップ ===
-        import shutil
+        # === 修正版：使用したファイル情報をテキストとして保存 ===
         import sys
+        from datetime import datetime
 
         # 1. ログディレクトリの作成（念のため）
         os.makedirs(self.log, exist_ok=True)
 
-        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得してコピー
-        # sys.argv から '--arch_cfg' の次の要素を探す
+        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得
         yaml_path = None
         for i, arg in enumerate(sys.argv):
             if arg == '--arch_cfg' and i + 1 < len(sys.argv):
                 yaml_path = sys.argv[i + 1]
                 break
-        
-        if yaml_path and os.path.exists(yaml_path):
-            backup_yaml = osp.join(self.log, osp.basename(yaml_path))
-            shutil.copy(yaml_path, backup_yaml)
-            self.logger.info(f"Backed up config: {yaml_path} -> {backup_yaml}")
 
-        # 3. 使用しているモデルのコード（.py）をコピー
-        # ARCH['model']['name'] (例: 'SJunNet4') に対応するファイルを lib/models/ から探す
+        # 3. 各ファイルのパスを取得
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        
-        if os.path.exists(model_py_path):
-            backup_model = osp.join(self.log, f"{model_name}.py")
-            shutil.copy(model_py_path, backup_model)
-            self.logger.info(f"Backed up model: {model_py_path} -> {backup_model}")
-        else:
-            self.logger.warning(f"Model file not found for backup: {model_py_path}")
-        
-        # 4. データセットのコード (.py) のバックアップ ★ここを追加
-        # ※ 今使っているファイル名に合わせてください
-        dataset_name = 'SemanticKitti_Polar1.py' 
+        dataset_name = 'SemanticKitti_Polar.py' # 実際に使っているファイル名に合わせてください
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
-        
-        if os.path.exists(dataset_py_path):
-            backup_dataset = osp.join(self.log, dataset_name)
-            shutil.copy(dataset_py_path, backup_dataset)
-            self.logger.info(f"Backed up dataset: {dataset_py_path} -> {backup_dataset}")
-        else:
-            self.logger.warning(f"Dataset file not found for backup: {dataset_py_path}")
-        # === ここまで追加 ===
+
+        # 4. 情報をテキストファイルに書き出す
+        used_files_txt = osp.join(self.log, 'used_files.txt')
+        with open(used_files_txt, 'w') as f:
+            f.write("=== Training Execution Log ===\n")
+            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Command: {' '.join(sys.argv)}\n")
+            f.write("-" * 30 + "\n")
+            f.write("[Used Files]\n")
+            f.write(f"Config YAML : {yaml_path if yaml_path else 'Not specified'}\n")
+            f.write(f"Model File  : {model_py_path}\n")
+            f.write(f"Dataset File: {dataset_py_path}\n")
+            f.write("-" * 30 + "\n")
+            f.write("[Key Settings]\n")
+            f.write(f"Dataset Root: {self.datadir}\n")
+            f.write(f"Log Dir     : {self.log}\n")
+
+        self.logger.info(f"Saved execution info to {used_files_txt}")
+        # === 修正版ここまで ===
 
         # Data
         self.parser = Parser(root=self.datadir,
