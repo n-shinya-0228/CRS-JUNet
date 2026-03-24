@@ -19,6 +19,7 @@ from .SJunNet3 import SJunNet3
 from .SJunNet4 import SJunNet4
 from .SJunNet5 import SJunNet5
 from .SJunNet6 import SJunNet6
+from .SJunNet7 import SJunNet7
 
 
 def get_model(model):

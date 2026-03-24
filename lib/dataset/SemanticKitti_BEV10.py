@@ -24,7 +24,7 @@ class SemanticKitti(Dataset):
         # 事前計算した 'bev' フォルダ内の .pt ファイルを列挙
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "bev_256_6ch")
+            bev_path = os.path.join(self.root, seq, "bev_512_6ch")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -72,7 +72,10 @@ class SemanticKitti(Dataset):
         
         # 2. 反射強度 (ch2) のゼロ割り（NaNの主原因）を確実に防ぐ
         max_r = torch.max(proj_tensor[2])
-        proj_tensor[2] = proj_tensor[2] / (max_r + 1e-5) 
+        # max_r が 0.0 より大きい場合のみ割り算を行う（ゼロ割りを絶対回避）
+        if max_r > 0.0:
+            proj_tensor[2] = proj_tensor[2] / max_r
+        # 反射強度は 0.0 〜 1.0 に収める
         proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
         
         # 3. Density (ch3) のクリップ
