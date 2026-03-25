@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar3
+#trainer_BEV5
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -117,46 +117,6 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-
-        # === 修正版：使用したファイル情報をテキストとして保存 ===
-        import sys
-        from datetime import datetime
-
-        # 1. ログディレクトリの作成（念のため）
-        os.makedirs(self.log, exist_ok=True)
-
-        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得
-        yaml_path = None
-        for i, arg in enumerate(sys.argv):
-            if arg == '--arch_cfg' and i + 1 < len(sys.argv):
-                yaml_path = sys.argv[i + 1]
-                break
-
-        # 3. 各ファイルのパスを取得
-        model_name = self.ARCH['model']['name']
-        model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar1.py' # 実際に使っているファイル名に合わせてください
-        dataset_py_path = osp.join('lib', 'dataset', dataset_name)
-
-        # 4. 情報をテキストファイルに書き出す
-        used_files_txt = osp.join(self.log, 'used_files.txt')
-        with open(used_files_txt, 'w') as f:
-            f.write("=== Training Execution Log ===\n")
-            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Command: {' '.join(sys.argv)}\n")
-            f.write("-" * 30 + "\n")
-            f.write("[Used Files]\n")
-            f.write(f"Config YAML : {yaml_path if yaml_path else 'Not specified'}\n")
-            f.write(f"Model File  : {model_py_path}\n")
-            f.write(f"Dataset File: {dataset_py_path}\n")
-            f.write("-" * 30 + "\n")
-            f.write("[Key Settings]\n")
-            f.write(f"Dataset Root: {self.datadir}\n")
-            f.write(f"Log Dir     : {self.log}\n")
-
-        self.logger.info(f"Saved execution info to {used_files_txt}")
-        # === 修正版ここまで ===
-
         # Data
         self.parser = Parser(root=self.datadir,
                              data_cfg=DATA,
@@ -189,9 +149,7 @@ class Trainer():
 
         # Model
         self.model = get_model(ARCH['model']['name'])(
-            nclasses=self.parser.get_n_classes(),
-            drop=self.ARCH["model"].get("dropout", 0.3)  # ★ YAMLから dropout を読み込んで渡す！
-        )
+            nclasses=self.parser.get_n_classes())
         self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
@@ -304,7 +262,7 @@ class Trainer():
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界Lossを完全に無効化
+        self.w_boundary = 0.20
 
     # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
@@ -356,15 +314,6 @@ class Trainer():
         # train & validate
         for epoch in range(self.start_epoch,
                            self.ARCH["train"]["max_epochs"]):
-            
-            # ★ 自動オフスイッチ：Epoch 60 に到達したら Auxiliary Loss を無効化する
-            if epoch == 60:
-                self.logger.info("*" * 80)
-                self.logger.info(f"[Epoch {epoch}] Disabling Auxiliary Losses (w_aux2, w_aux4 -> 0.0) for final fine-tuning!")
-                self.logger.info("*" * 80)
-                self.w_aux2 = 0.0
-                self.w_aux4 = 0.0
-
             acc, iou, loss, update_mean = self.train_epoch(
                 train_loader=self.parser.get_train_set(),
                 model=self.model,
@@ -441,7 +390,7 @@ class Trainer():
         loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
-        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None: # ★ 条件を追加
+        if 'boundary' in outs and boundary_gt is not None:
             bmap = self.boundary_criterion(
                 outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
 
@@ -479,25 +428,23 @@ class Trainer():
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
 
+            # boundary target（無効画素はここで除外）
+            boundary_gt = self._compute_boundary_gt(proj_labels)
             # ★ マスクの次元合わせ
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
             else:
                 proj_mask_exp = proj_mask.float()
 
-            # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
-            if self.w_boundary > 0:
-                boundary_gt = self._compute_boundary_gt(proj_labels)
-                boundary_gt = boundary_gt * proj_mask_exp
-                if self.gpu:
-                    boundary_gt = boundary_gt.cuda(non_blocking=True)
-            else:
-                boundary_gt = None
+            boundary_gt = boundary_gt * proj_mask_exp
+            
+            if self.gpu:
+                boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-            # in_vol (5ch) と proj_mask_exp (1ch) を結合して 6ch にする
+            # ★ in_vol(5ch) と proj_mask_exp(1ch) を結合して 6ch にする！
             in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            # モデルに入力
+            # forward (JunNet / ChatNet4 returns dict)
             outs = model(in_vol6)
 
             # loss（boundary は proj_mask でマスク平均）
@@ -592,30 +539,28 @@ class Trainer():
                     in_vol = in_vol.cuda()
                     proj_mask = proj_mask.cuda()
                 if self.gpu:
-                    proj_labels = proj_labels.cuda(non_blocking=True).long()
+                    proj_labels = proj_labels.cuda(
+                        non_blocking=True).long()
 
+                boundary_gt = self._compute_boundary_gt(proj_labels)
                 # ★ マスクの次元合わせ
                 if proj_mask.dim() == 3:
                     proj_mask_exp = proj_mask.unsqueeze(1).float()
                 else:
                     proj_mask_exp = proj_mask.float()
 
-                # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
-                if self.w_boundary > 0:
-                    boundary_gt = self._compute_boundary_gt(proj_labels)
-                    boundary_gt = boundary_gt * proj_mask_exp
-                    if self.gpu:
-                        boundary_gt = boundary_gt.cuda(non_blocking=True)
-                else:
-                    boundary_gt = None
+                boundary_gt = boundary_gt * proj_mask_exp
 
-                # in_vol (5ch) と proj_mask_exp (1ch) を結合して 6ch にする
+                if self.gpu:
+                    boundary_gt = boundary_gt.cuda(non_blocking=True)
+
+                # ★ ここも in_vol(5ch) + mask(1ch) = 6ch に！
                 in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                # モデルに入力
-                outs = model(in_vol6)
+                outs = eval_model(in_vol6)
 
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(
+                    outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)

@@ -11,8 +11,8 @@ train:
   cos_epochs: 97
   momentum: 0.9          # sgd momentum
   lr_decay: 0.9        # learning rate decay per epoch after initial cycle (from min lr)
-  w_decay: 0.05        # weight decay
-  batch_size: 2       # batch size
+  w_decay: 0.01        # weight decay
+  batch_size: 3       # batch size
   report_batch: 200       # every x batches, report loss
   report_epoch: 1        # every x epochs, report validation set
   epsilon_w: 0.1       # class weight w = 1 / (content + epsilon_w)
@@ -24,9 +24,9 @@ train:
 # backbone parameters
 ################################################################################
 model:
-  name: "SJunNet7"  
+  name: "SJunNet4"  
   in_channels: 6
-  dropout: 0.5
+  dropout: 0.3
   bn_d: 0.01
   use_mps: False
 
@@ -57,18 +57,20 @@ dataset:
     # fov_down: -25 
     img_prop:
       # width: 512
-      width: 256
-      height: 256
-    img_means: # max_z, mean_z, max_r, density
+      width: 512
+      height: 512
+    img_means: # max_z, mean_z, max_r, density, z_diff
       - 0.0
       - 0.0
       - 0.0
       - 0.0
+      - 0.0   # ★ 5つ目を追加
     img_stds: 
       - 1.0
       - 1.0
       - 1.0
       - 1.0
+      - 1.0   # ★ 5つ目を追加
 
     fov_up: 3
     fov_down: -23

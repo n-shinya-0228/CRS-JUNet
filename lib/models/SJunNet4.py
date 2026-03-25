@@ -359,7 +359,7 @@ class SJunNet4(nn.Module):
         base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
-        swa_window: Tuple[int, int] = (32, 32),
+        swa_window: Tuple[int, int] = (16, 16),
         return_aux: bool = True,
     ):
         super().__init__()
@@ -368,7 +368,7 @@ class SJunNet4(nn.Module):
         assert aspp_out % swa_heads == 0, f"aspp_out({aspp_out}) must be divisible by swa_heads({swa_heads})"
 
         # Mask-Aware Stem (stabilized)
-        self.stem_feat = conv_bn_act(4, base_ch, 3, 1, 1)
+        self.stem_feat = conv_bn_act(5, base_ch, 3, 1, 1)
         self.stem_mask = nn.Sequential(
             conv_bn_act(1, base_ch // 2, 1, 1, 0),
             conv_bn_act(base_ch // 2, base_ch, 3, 1, 1),
@@ -412,15 +412,12 @@ class SJunNet4(nn.Module):
         self.final_logits = nn.Conv2d(base_ch, nclasses, 1)
 
     def forward(self, x):
-        feat_in = x[:, :4, :, :]
-        m = x[:, 4:5, :, :]
+        # ★ 6chの入力をさばく！
+        feat_in = x[:, :5, :, :]  
+        m = x[:, 5:6, :, :]       
 
         s0 = self.stem_feat(feat_in)
-        g = torch.sigmoid(self.stem_mask(m))
-        #s0 = s0 * (1.0 + self.gate_scale * (g - 0.5))
-
-        # ★ シンプルに、入力段階で点がない場所を確実にゼロにする
-        s0 = s0 * m
+        s0 = s0 * m  # マスクで真空地帯を消す
 
         B, _, H, W = x.shape
 
