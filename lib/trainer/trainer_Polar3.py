@@ -494,11 +494,11 @@ class Trainer():
             else:
                 boundary_gt = None
 
-            # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
-            in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+            # in_vol (5ch) と proj_mask_exp (1ch) を結合して 6ch にする
+            in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            # forward (JunNet / ChatNet4 returns dict)
-            outs = model(in_vol5)
+            # モデルに入力
+            outs = model(in_vol6)
 
             # loss（boundary は proj_mask でマスク平均）
             loss = self._mix_losses(outs, proj_labels,
@@ -507,7 +507,7 @@ class Trainer():
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outs = model(in_vol5)
+                outs = model(in_vol6)
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
 
             # スケーラーを使ってバックプロパゲーション
@@ -609,10 +609,11 @@ class Trainer():
                 else:
                     boundary_gt = None
 
-                # ★ in_vol と proj_mask_exp を結合して 5ch にする
-                in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+                # in_vol (5ch) と proj_mask_exp (1ch) を結合して 6ch にする
+                in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                outs = eval_model(in_vol5)
+                # モデルに入力
+                outs = model(in_vol6)
 
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
