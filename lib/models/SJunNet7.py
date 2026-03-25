@@ -190,8 +190,7 @@ class ASPP(nn.Module):
                 self.branches.append(conv_bn_act(in_ch, out_ch, k=3, s=1, p=r, d=r))
 
         self.image_pool = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            # ★ conv_bn_act を使わず、直接 Conv2d と ReLU を書く（InstanceNormを回避）
+            nn.AdaptiveMaxPool2d((1, 1)),  # ★ Avg を Max に変更！
             nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
         )
@@ -413,7 +412,7 @@ class ShiftedSWABlock(nn.Module):
         return x
 
 
-class SJunNet6(nn.Module):
+class SJunNet7(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
@@ -474,8 +473,8 @@ class SJunNet6(nn.Module):
         self.aux2_head = nn.Conv2d(base_ch * 2, nclasses, 1)
 
         self.fuse = conv_bn_act(base_ch, base_ch, 3, 1, 1)
-        self.strip_h = nn.Sequential(nn.AdaptiveAvgPool2d((None, 1)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
-        self.strip_w = nn.Sequential(nn.AdaptiveAvgPool2d((1, None)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
+        self.strip_h = nn.Sequential(nn.AdaptiveMaxPool2d((None, 1)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
+        self.strip_w = nn.Sequential(nn.AdaptiveMaxPool2d((1, None)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
         self.strip_fuse = conv_bn_act(base_ch * 3, base_ch, 1, 1, 0)
 
         self.boundary_head = nn.Conv2d(base_ch, 1, 1)

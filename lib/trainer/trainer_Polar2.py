@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar3
+#trainer_Polar2
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -189,9 +189,7 @@ class Trainer():
 
         # Model
         self.model = get_model(ARCH['model']['name'])(
-            nclasses=self.parser.get_n_classes(),
-            drop=self.ARCH["model"].get("dropout", 0.3)  # ★ YAMLから dropout を読み込んで渡す！
-        )
+            nclasses=self.parser.get_n_classes())
         self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
@@ -356,15 +354,6 @@ class Trainer():
         # train & validate
         for epoch in range(self.start_epoch,
                            self.ARCH["train"]["max_epochs"]):
-            
-            # ★ 自動オフスイッチ：Epoch 60 に到達したら Auxiliary Loss を無効化する
-            if epoch == 60:
-                self.logger.info("*" * 80)
-                self.logger.info(f"[Epoch {epoch}] Disabling Auxiliary Losses (w_aux2, w_aux4 -> 0.0) for final fine-tuning!")
-                self.logger.info("*" * 80)
-                self.w_aux2 = 0.0
-                self.w_aux4 = 0.0
-
             acc, iou, loss, update_mean = self.train_epoch(
                 train_loader=self.parser.get_train_set(),
                 model=self.model,
