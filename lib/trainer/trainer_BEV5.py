@@ -117,6 +117,46 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
+
+        # === 修正版：使用したファイル情報をテキストとして保存 ===
+        import sys
+        from datetime import datetime
+
+        # 1. ログディレクトリの作成（念のため）
+        os.makedirs(self.log, exist_ok=True)
+
+        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得
+        yaml_path = None
+        for i, arg in enumerate(sys.argv):
+            if arg == '--arch_cfg' and i + 1 < len(sys.argv):
+                yaml_path = sys.argv[i + 1]
+                break
+
+        # 3. 各ファイルのパスを取得
+        model_name = self.ARCH['model']['name']
+        model_py_path = osp.join('lib', 'models', f"{model_name}.py")
+        dataset_name = 'SemanticKitti_BEV10.py' # 実際に使っているファイル名に合わせてください
+        dataset_py_path = osp.join('lib', 'dataset', dataset_name)
+
+        # 4. 情報をテキストファイルに書き出す
+        used_files_txt = osp.join(self.log, 'used_files.txt')
+        with open(used_files_txt, 'w') as f:
+            f.write("=== Training Execution Log ===\n")
+            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Command: {' '.join(sys.argv)}\n")
+            f.write("-" * 30 + "\n")
+            f.write("[Used Files]\n")
+            f.write(f"Config YAML : {yaml_path if yaml_path else 'Not specified'}\n")
+            f.write(f"Model File  : {model_py_path}\n")
+            f.write(f"Dataset File: {dataset_py_path}\n")
+            f.write("-" * 30 + "\n")
+            f.write("[Key Settings]\n")
+            f.write(f"Dataset Root: {self.datadir}\n")
+            f.write(f"Log Dir     : {self.log}\n")
+
+        self.logger.info(f"Saved execution info to {used_files_txt}")
+        # === 修正版ここまで ===
+
         # Data
         self.parser = Parser(root=self.datadir,
                              data_cfg=DATA,
@@ -262,7 +302,7 @@ class Trainer():
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
         self.w_lovasz = 0.50
-        self.w_boundary = 0.20
+        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界ロスをオフ！
 
     # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
@@ -441,11 +481,11 @@ class Trainer():
             if self.gpu:
                 boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-            # ★ in_vol(4ch) と proj_mask_exp(1ch) を結合して 5ch にする！
-            in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+            # ★ in_vol(5ch) と proj_mask_exp(1ch) を結合して 6ch にする！
+            in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
             # forward (JunNet / ChatNet4 returns dict)
-            outs = model(in_vol5)
+            outs = model(in_vol6)
 
             # loss（boundary は proj_mask でマスク平均）
             loss = self._mix_losses(outs, proj_labels,
@@ -454,7 +494,7 @@ class Trainer():
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outs = model(in_vol5)
+                outs = model(in_vol6)
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
 
             # スケーラーを使ってバックプロパゲーション
@@ -554,10 +594,10 @@ class Trainer():
                 if self.gpu:
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-            
-                in_vol5 = torch.cat([in_vol, proj_mask_exp], dim=1)
+                # ★ in_vol(5ch) + mask(1ch) = 6ch
+                in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                outs = eval_model(in_vol5)
+                outs = eval_model(in_vol6) # ★ ここも in_vol6 に変更！
 
                 loss = self._mix_losses(
                     outs, proj_labels, boundary_gt, proj_mask)
