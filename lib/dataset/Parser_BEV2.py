@@ -1,4 +1,4 @@
-# Parser_Polar.py
+# Parser_BEV2.py
 import os
 import torch
 from torch.utils.data import DataLoader
@@ -7,35 +7,32 @@ from .SemanticKitti_Polar1 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
-    SemanticKitti_Polar1 が返す16要素のタプルをバッチ化する関数。
-    テンソル化すべき最初の3つ（特徴量、マスク、ラベル）だけスタックし、
-    残りのダミーやパス情報はリストのまま返す。
+    SemanticKitti_BEV8 が返す16要素のタプルをバッチ化する関数。
+    テンソル化できるものは torch.stack で結合し、
+    ダミー変数のリストなどはそのままリストとして保持する。
     """
-    # ★ ここが 5ch (B, 5, H, W) になります
-    proj_tensor   = torch.stack([b[0] for b in batch], dim=0)
-    # [B, 1, H, W]
-    mask_t        = torch.stack([b[1] for b in batch], dim=0)
-    # [B, H, W]
-    labels_t      = torch.stack([b[2] for b in batch], dim=0)
+    proj_tensor   = torch.stack([b[0] for b in batch], dim=0)   # [B, 4, H, W]
+    mask_t        = torch.stack([b[1] for b in batch], dim=0)   # [B, 1, H, W]
+    labels_t      = torch.stack([b[2] for b in batch], dim=0)   # [B, H, W]
     
-    # 互換性のためのリスト
-    unproj_labels = [b[3] for b in batch]
-    path_seq      = [b[4] for b in batch]
-    path_name     = [b[5] for b in batch]
+    unproj_labels = [b[3] for b in batch]                       # list (dummy)
+    path_seq      = [b[4] for b in batch]                       # list of str
+    path_name     = [b[5] for b in batch]                       # list of str
     
-    # trainer.py の unpack に合わせるためのダミー (Noneや0で埋める)
-    # trainer.py 側で unpack しているのは:
-    # in_vol, proj_mask, proj_labels, _, path_seq, path_name, _, _, proj_range, _, _, _, _, _, _, edge
-    
-    dummy_list = [None] * len(batch)
-    dummy_tensor = torch.zeros(len(batch))
-    
-    return (
-        proj_tensor, mask_t, labels_t, unproj_labels, path_seq, path_name,
-        dummy_list, dummy_list, dummy_tensor, dummy_list, 
-        dummy_list, dummy_list, dummy_tensor, dummy_list, 
-        dummy_tensor, dummy_tensor
-    )
+    # 以下すべてダミー変数（元の Trainer 互換のため）
+    dummy6  = [b[6] for b in batch]
+    dummy7  = [b[7] for b in batch]
+    dummy8  = torch.stack([b[8] for b in batch], dim=0)
+    dummy9  = [b[9] for b in batch]
+    dummy10 = [b[10] for b in batch]
+    dummy11 = [b[11] for b in batch]
+    dummy12 = torch.stack([b[12] for b in batch], dim=0)
+    dummy13 = [b[13] for b in batch]
+    dummy14 = torch.stack([b[14] for b in batch], dim=0)
+    dummy15 = torch.stack([b[15] for b in batch], dim=0)
+
+    return (proj_tensor, mask_t, labels_t, unproj_labels, path_seq, path_name,
+            dummy6, dummy7, dummy8, dummy9, dummy10, dummy11, dummy12, dummy13, dummy14, dummy15)
 
 
 class Parser:

@@ -44,20 +44,26 @@ class SemanticKitti(Dataset):
         mask_t = data['mask_t']           # [1, 512, 512]
         labels_t = data['labels_t']       # [512, 512]
 
-        # --- 安全クリッピング付き正規化 (直交座標BEVと全く同じでOK) ---
-        proj_tensor[0] = torch.clamp(proj_tensor[0], -10.0, 10.0)
-        proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
+        # --- 安全クリッピング付き正規化 (Polar BEV 5ch仕様) ---
+        # ch 0: max_z (高さの最大値。地面付近-2m 〜 建物10mくらいまで)
+        proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
+        proj_tensor[0] = (proj_tensor[0] - 1.0) / 5.0
         
-        proj_tensor[1] = torch.clamp(proj_tensor[1], -10.0, 10.0)
-        proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
+        # ch 1: mean_z (高さの平均値)
+        proj_tensor[1] = torch.clamp(proj_tensor[1], -5.0, 15.0)
+        proj_tensor[1] = (proj_tensor[1] - 1.0) / 5.0
         
+        # ch 2: max_r (反射強度。0〜1なのでそのままか、少しクリップ)
         max_r = torch.max(proj_tensor[2])
         if max_r > 0.0:
             proj_tensor[2] = proj_tensor[2] / max_r
         proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
         
+        # ch 3: density (密度。すでに laserscan.py で counts/100 されているので0〜数倍)
         proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
-        proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 5.0) / 5.0
+        
+        # ch 4: z_diff (高さの差。平坦0m 〜 建物数m)
+        proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
 
         # ★★★ 極座標 (Polar) 専用の Data Augmentation ★★★
         if self.is_train:
