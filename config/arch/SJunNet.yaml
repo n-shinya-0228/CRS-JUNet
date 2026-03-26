@@ -11,7 +11,7 @@ train:
   cos_epochs: 97
   momentum: 0.9          # sgd momentum
   lr_decay: 0.9        # learning rate decay per epoch after initial cycle (from min lr)
-  w_decay: 0.01        # weight decay
+  w_decay: 0.03        # weight decay
   batch_size: 3       # batch size
   report_batch: 200       # every x batches, report loss
   report_epoch: 1        # every x epochs, report validation set
@@ -26,7 +26,7 @@ train:
 model:
   name: "SJunNet4"  
   in_channels: 6
-  dropout: 0.3
+  dropout: 0.4
   bn_d: 0.01
   use_mps: False
 

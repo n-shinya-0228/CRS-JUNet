@@ -86,10 +86,10 @@ class SemanticKitti(Dataset):
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
 
-            # 点群の一部（例えば5%）をランダムに消去（ゼロにする）して暗記を防ぐ
-            if torch.rand(1) > 0.5:
-                # proj_tensor の形状が [4, H, W] であると仮定
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
+            # 点群の一部をランダムに消去して強力に暗記を防ぐ
+            # ★ 確率を 50% -> 70% に引き上げ、消す割合も 5% -> 10% に引き上げる
+            if torch.rand(1) > 0.3:
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
