@@ -84,7 +84,7 @@ class SemanticKitti(Dataset):
             # ※ 上下反転と90度回転は、極座標の物理法則を壊すため削除！
 
             # 3. Random Dropout (暗記防止)
-            if torch.rand(1) > 0.5:
+            if torch.rand(1) > 0.2:
                 drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
