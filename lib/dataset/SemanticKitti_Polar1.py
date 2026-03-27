@@ -83,11 +83,21 @@ class SemanticKitti(Dataset):
                 
             # ※ 上下反転と90度回転は、極座標の物理法則を壊すため削除！
 
-            # 3. Random Dropout (暗記防止)
-            if torch.rand(1) > 0.5:
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
+            # 3. 強力な Random DropBlock (暗記防止)
+            # ★ 確率80%で、最大30%の点群をランダムに消し飛ばす！
+            if torch.rand(1) > 0.2:
+                # 0.05 (5%) ではなく、0.30 (30%) に引き上げます
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.30).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
+
+            # 4. Feature Jittering (特徴量のガウシアンノイズ)
+            # ★ 確率50%で、すべての特徴量にランダムな微小ノイズを加える
+            if torch.rand(1) > 0.5:
+                # mean=0, std=0.02 のノイズを作成
+                noise = torch.randn_like(proj_tensor) * 0.02
+                # ノイズを足す（マスクされている真空地帯にはノイズを乗せない）
+                proj_tensor = (proj_tensor + noise) * mask_t
 
         dummy_list = []
         dummy_tensor = torch.tensor(0)
