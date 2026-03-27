@@ -428,7 +428,7 @@ class SJunNet8(nn.Module):
         base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
-        swa_window: Tuple[int, int] = (8, 8),
+        swa_window: Tuple[int, int] = (16, 16),
         return_aux: bool = True,
     ):
         super().__init__()

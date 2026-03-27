@@ -45,44 +45,26 @@ class SemanticKitti(Dataset):
         mask_t = data['mask_t']           # [1, 256, 256]
         labels_t = data['labels_t']       # [256, 256]
 
-        # ★ 追加：データの正規化 (Normalization)
-        # 各チャネルの平均(mean)と標準偏差(std)で割ってスケールを揃える
-        # ※ ここでは近似的な固定値を使用します（厳密にはデータセット全体の平均を計算するのがベストですが、これで十分機能します）
+        # ★ 異常値によるNaNを完全に防ぐための安全対策（クリッピングと正規化）
+        # ch 0: max_z (高さの最大値)
+        proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
+        proj_tensor[0] = (proj_tensor[0] - 1.0) / 5.0
         
-        # ch0: max_z (だいたい -3 ~ +5) -> mean: 1.0, std: 3.0
-        proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
+        # ch 1: mean_z (高さの平均値)
+        proj_tensor[1] = torch.clamp(proj_tensor[1], -5.0, 15.0)
+        proj_tensor[1] = (proj_tensor[1] - 1.0) / 5.0
         
-        # ch1: mean_z (だいたい -3 ~ +2) -> mean: -0.5, std: 2.0
-        proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
-        
-        # ch2: max_r (だいたい 0 ~ 1 または 0 ~ 255)
-        # SemanticKITTIのremissionは通常0~1ですが、念のためスケールを調整
-        proj_tensor[2] = proj_tensor[2] / (torch.max(proj_tensor[2]) + 1e-5) 
-        
-        # ch3: density (0 ~ 数十)
-        proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0 # 外れ値をカットして0~1に
-
-        # ★ 異常値によるNaNを完全に防ぐための安全対策（クリッピング）
-        # 1. Z軸関連 (ch0, ch1) は現実的な範囲（-10m 〜 10m）でクリップ
-        proj_tensor[0] = torch.clamp(proj_tensor[0], -10.0, 10.0)
-        proj_tensor[0] = (proj_tensor[0] - 1.0) / 3.0
-        
-        proj_tensor[1] = torch.clamp(proj_tensor[1], -10.0, 10.0)
-        proj_tensor[1] = (proj_tensor[1] + 0.5) / 2.0
-        
-        # 2. 反射強度 (ch2) のゼロ割り（NaNの主原因）を確実に防ぐ
+        # ch 2: 反射強度 (ゼロ割りを絶対に防ぐ)
         max_r = torch.max(proj_tensor[2])
-        # max_r が 0.0 より大きい場合のみ割り算を行う（ゼロ割りを絶対回避）
         if max_r > 0.0:
             proj_tensor[2] = proj_tensor[2] / max_r
-        # 反射強度は 0.0 〜 1.0 に収める
         proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
         
-        # 3. Density (ch3) のクリップ
+        # ch 3: Density (点の密度)
         proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
 
-        # ★ 4. 高低差 (ch4) のクリップ（マイナスの異常値も防ぐ）
-        proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 5.0) / 5.0
+        # ★ ch 4: 高低差 (z_diff)
+        proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
 
         if self.is_train:
             # 1. ランダム水平反転 (50%の確率)
@@ -104,10 +86,10 @@ class SemanticKitti(Dataset):
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
 
-            # 点群の一部（例えば5%）をランダムに消去（ゼロにする）して暗記を防ぐ
-            if torch.rand(1) > 0.5:
-                # proj_tensor の形状が [4, H, W] であると仮定
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
+            # 点群の一部をランダムに消去して強力に暗記を防ぐ
+            # ★ 確率を 50% -> 70% に引き上げ、消す割合も 5% -> 10% に引き上げる
+            if torch.rand(1) > 0.3:
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
