@@ -86,14 +86,15 @@ class SemanticKitti(Dataset):
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
 
-            # 点群の一部をランダムに消去して強力に暗記を防ぐ
-            # ★ 確率を 50% -> 70% に引き上げ、消す割合も 5% -> 10% に引き上げる
-            if torch.rand(1) > 0.2:
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.20).unsqueeze(0).float()
+            # 点群消去は「超マイルド」にする（Cartesianのピクセルは貴重なため）
+            # ★ 確率50%で、たった 5% だけ消す
+            if torch.rand(1) > 0.5:
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
-            # ★ ここに追加！: 4. Feature Jittering (特徴量のガウシアンノイズ)
+            # Feature Jittering (特徴量のガウシアンノイズ) はそのまま残す！
+            # これが直交座標系における最強の正則化になります
             if torch.rand(1) > 0.5:
                 noise = torch.randn_like(proj_tensor) * 0.02
                 proj_tensor = (proj_tensor + noise) * mask_t

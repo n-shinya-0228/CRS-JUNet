@@ -3,6 +3,7 @@ from .JunNet13 import JunNet13
 from .CRS_JUNet import CRS_JUNet
 from .SJunNet4 import SJunNet4
 from .SJunNet8 import SJunNet8
+from .SJunNet9 import SJunNet9
 
 
 def get_model(model):
