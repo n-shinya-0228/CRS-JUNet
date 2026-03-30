@@ -8,7 +8,7 @@ class LaserScan:
   """Class that contains LaserScan with x,y,z,r"""
   EXTENSIONS_SCAN = ['.bin']
 
-  def __init__(self, project=False, H=64, W=1024, fov_up=3.0, fov_down=-25.0):
+  def __init__(self, project=False, H=512, W=512, fov_up=3.0, fov_down=-25.0):
     self.project = project
     self.proj_H = H
     self.proj_W = W
@@ -93,7 +93,7 @@ class LaserScan:
     """Project a pointcloud into a multi-channel Pseudo-image (BEV grid)."""
     
     # 1. グリッドの解像度と範囲
-    res = 0.2  # 10cm grid resolution
+    res = 0.1  # 10cm grid resolution
     x_min, x_max = 0.0, 51.2
     y_min, y_max = -25.6, 25.6
     
@@ -186,7 +186,7 @@ class SemLaserScan(LaserScan):
   """Class that contains LaserScan with x,y,z,r,sem_label,sem_color_label,inst_label,inst_color_label"""
   EXTENSIONS_LABEL = ['.label']
 
-  def __init__(self, sem_color_dict=None, project=False, H=64, W=1024,
+  def __init__(self, sem_color_dict=None, project=False, H=512, W=512,
                fov_up=3.0, fov_down=-25.0, max_classes=300):
     super(SemLaserScan, self).__init__(project, H, W, fov_up, fov_down)
     self.reset()
