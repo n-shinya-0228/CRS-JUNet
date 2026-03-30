@@ -8,8 +8,14 @@ import argparse
 import gc
 
 # 既存のモジュールをインポート
-from lib.utils.laserscan_Polar1 import SemLaserScan
-from lib.dataset.SemanticKitti_BEV1 import _build_lut
+from lib.utils.laserscan_BEV2 import SemLaserScan
+
+def _build_lut(learning_map):
+    maxkey = max(learning_map.keys())
+    lut = np.zeros((maxkey + 100,), dtype=np.int32)
+    for k, v in learning_map.items():
+        lut[k] = v
+    return lut
 
 def main():
     parser = argparse.ArgumentParser()
@@ -36,7 +42,7 @@ def main():
         lpath = os.path.join(args.dataset, "sequences", seq, "labels")
         
         # 保存先フォルダを作成（sequences/00/bev_512 など）
-        save_path = os.path.join(args.dataset, "sequences", seq, "bev_512_polar")
+        save_path = os.path.join(args.dataset, "sequences", seq, "bev_512")
         os.makedirs(save_path, exist_ok=True)
 
         if not os.path.exists(vpath):

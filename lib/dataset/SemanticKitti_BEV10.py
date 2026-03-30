@@ -24,7 +24,7 @@ class SemanticKitti(Dataset):
         # 事前計算した 'bev' フォルダ内の .pt ファイルを列挙
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "bev_512_6ch")
+            bev_path = os.path.join(self.root, seq, "bev_512")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -88,10 +88,15 @@ class SemanticKitti(Dataset):
 
             # 点群の一部をランダムに消去して強力に暗記を防ぐ
             # ★ 確率を 50% -> 70% に引き上げ、消す割合も 5% -> 10% に引き上げる
-            if torch.rand(1) > 0.3:
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
+            if torch.rand(1) > 0.2:
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.20).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
+
+            # ★ ここに追加！: 4. Feature Jittering (特徴量のガウシアンノイズ)
+            if torch.rand(1) > 0.5:
+                noise = torch.randn_like(proj_tensor) * 0.02
+                proj_tensor = (proj_tensor + noise) * mask_t
 
         # Parserの戻り値と合わせるためのダミー変数
         dummy_list = []

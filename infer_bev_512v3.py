@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy.spatial import cKDTree
 
 # ★ BEV投影の心臓部（学習時と同じもの）をインポート
-from lib.utils.laserscan_BEV1 import SemLaserScan
+from lib_old.utils.laserscan_BEV1 import SemLaserScan
 
 def remap_to_original_labels(predictions, learning_map_inv):
     """モデル出力のラベルをSemanticKITTIの元のラベルIDに戻す"""
