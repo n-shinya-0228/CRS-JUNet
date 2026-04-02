@@ -96,7 +96,7 @@ class SemanticKitti(Dataset):
             # Feature Jittering (特徴量のガウシアンノイズ) はそのまま残す！
             # これが直交座標系における最強の正則化になります
             if torch.rand(1) > 0.5:
-                noise = torch.randn_like(proj_tensor) * 0.02
+                noise = torch.randn_like(proj_tensor) * 0.05
                 proj_tensor = (proj_tensor + noise) * mask_t
 
         # Parserの戻り値と合わせるためのダミー変数

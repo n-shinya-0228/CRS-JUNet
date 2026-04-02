@@ -8,7 +8,7 @@ class LaserScan:
     """Class that contains LaserScan with x,y,z,r"""
     EXTENSIONS_SCAN = ['.bin']
 
-    def __init__(self, project=False, H=256, W=256, fov_up=3.0, fov_down=-25.0):
+    def __init__(self, project=False, H=512, W=512, fov_up=3.0, fov_down=-25.0):
         self.project = project
         self.proj_H = H
         self.proj_W = W
@@ -94,10 +94,10 @@ class LaserScan:
         
         # 1. 極座標グリッドの設定
         max_radius = 51.2  # 最大 51.2m 先までを収める
-        H = 256            # ★ 512 から 256 に変更（半径方向のグリッド数）
+        H = 512            # ★ 512 から 256 に変更（半径方向のグリッド数）
         res_rho = max_radius / H
         
-        W = 256            # ★ 512 から 256 に変更（角度方向のグリッド数）
+        W = 512            # ★ 512 から 256 に変更（角度方向のグリッド数）
         res_theta = (2 * np.pi) / W
 
         # データローダーが要求するすべての配列を初期化
@@ -193,7 +193,7 @@ class SemLaserScan(LaserScan):
     """Class that contains LaserScan with x,y,z,r,sem_label,sem_color_label,inst_label,inst_color_label"""
     EXTENSIONS_LABEL = ['.label']
 
-    def __init__(self, sem_color_dict=None, project=False, H=256, W=256,
+    def __init__(self, sem_color_dict=None, project=False, H=512, W=512,
                  fov_up=3.0, fov_down=-25.0, max_classes=300):
         super(SemLaserScan, self).__init__(project, H, W, fov_up, fov_down)
         self.reset()
