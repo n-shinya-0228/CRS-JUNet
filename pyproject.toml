@@ -10,7 +10,7 @@ dependencies = [
     "numpy>=1.24,<1.27",
     "opencv-contrib-python==4.5.5.64",
     "opencv-python==4.5.5.64",
-    "pillow==9.2.0",
+    "pillow>=9.3.0",
     "pip>=25.1.1",
     "torch",
     "torchvision",
@@ -26,4 +26,5 @@ dependencies = [
     "timm>=1.0.17",
     "thop>=0.1.1.post2209072238",
     "setuptools<70.0.0",
+    "open3d==0.18.0",
 ]
