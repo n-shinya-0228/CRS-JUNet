@@ -7,3 +7,4 @@ output/
 *.cpython-310.pyc
 log_old/
 memo/schedule.txt
+lib_old/
