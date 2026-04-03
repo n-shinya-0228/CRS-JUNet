@@ -1,11 +1,13 @@
 import os
 import torch
 import numpy as np
+import random
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 
 class SemanticKitti(Dataset):
     """
-    極座標 (Polar) BEV (.pt) を読み込むデータセット
+    事前計算された BEV (.pt) を超高速で読み込むデータセット
     """
     def __init__(self, root, sequences, labels, color_map,
                  learning_map, learning_map_inv, sensor,
@@ -21,10 +23,10 @@ class SemanticKitti(Dataset):
         self.gt = gt
         self.is_train = is_train
 
-        # ★ 読み込み先を Polar 用のフォルダに変更
+        # 事前計算した 'bev' フォルダ内の .pt ファイルを列挙
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_256-512")
+            bev_path = os.path.join(self.root, seq, "bev_512")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -38,14 +40,15 @@ class SemanticKitti(Dataset):
     def __getitem__(self, index):
         pt_file = self.scan_files[index]
 
+        # 1. 事前計算されたテンソルを爆速でロード
         data = torch.load(pt_file, weights_only=True)
         
-        proj_tensor = data['proj_tensor'] # [4, 512, 512]
-        mask_t = data['mask_t']           # [1, 512, 512]
-        labels_t = data['labels_t']       # [512, 512]
+        proj_tensor = data['proj_tensor'] # [4, 256, 256]
+        mask_t = data['mask_t']           # [1, 256, 256]
+        labels_t = data['labels_t']       # [256, 256]
 
-        # --- 安全クリッピング付き正規化 (Polar BEV 5ch仕様) ---
-        # ch 0: max_z (高さの最大値。地面付近-2m 〜 建物10mくらいまで)
+        # ★ 異常値によるNaNを完全に防ぐための安全対策（クリッピングと正規化）
+        # ch 0: max_z (高さの最大値)
         proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
         proj_tensor[0] = (proj_tensor[0] - 1.0) / 5.0
         
@@ -53,51 +56,56 @@ class SemanticKitti(Dataset):
         proj_tensor[1] = torch.clamp(proj_tensor[1], -5.0, 15.0)
         proj_tensor[1] = (proj_tensor[1] - 1.0) / 5.0
         
-        # ch 2: max_r (反射強度。0〜1なのでそのままか、少しクリップ)
+        # ch 2: 反射強度 (ゼロ割りを絶対に防ぐ)
         max_r = torch.max(proj_tensor[2])
         if max_r > 0.0:
             proj_tensor[2] = proj_tensor[2] / max_r
         proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
         
-        # ch 3: density (密度。すでに laserscan.py で counts/100 されているので0〜数倍)
+        # ch 3: Density (点の密度)
         proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
-        
-        # ch 4: z_diff (高さの差。平坦0m 〜 建物数m)
+
+        # ★ ch 4: 高低差 (z_diff)
         proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
 
-        # ★★★ 極座標 (Polar) 専用の Data Augmentation ★★★
         if self.is_train:
-            # 1. Azimuth Roll (ヨー回転のシミュレート)
-            # 画像を横軸(角度)に沿ってランダムにスライドさせる。はみ出た部分は反対側からループして戻ってくる。
-            roll_shift = torch.randint(0, proj_tensor.shape[2], (1,)).item()
-            if roll_shift > 0:
-                proj_tensor = torch.roll(proj_tensor, shifts=roll_shift, dims=2)
-                mask_t = torch.roll(mask_t, shifts=roll_shift, dims=2)
-                labels_t = torch.roll(labels_t, shifts=roll_shift, dims=1)
-
-            # 2. ランダム水平反転 (50%の確率で鏡映しにする)
+            # 1. ランダム水平反転 (50%の確率)
             if torch.rand(1) > 0.5:
                 proj_tensor = torch.flip(proj_tensor, dims=[2])
                 mask_t = torch.flip(mask_t, dims=[2])
                 labels_t = torch.flip(labels_t, dims=[1])
-                
-            # ※ 上下反転と90度回転は、極座標の物理法則を壊すため削除！
 
-            # 3. マイルドな DropBlock に戻す (本来の形を学ばせるため)
-            # ★ 確率50%で、10%の点群だけを隠す
+            # 2. ランダム垂直反転 (50%の確率)
             if torch.rand(1) > 0.5:
-                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
+                proj_tensor = torch.flip(proj_tensor, dims=[1])
+                mask_t = torch.flip(mask_t, dims=[1])
+                labels_t = torch.flip(labels_t, dims=[0])
+
+            # 3. ★ 無段階ランダム回転 (0度〜360度) に変更！
+            # 16パターンではなく「無限のパターン」を作り出し、ピクセルの並びを毎回微細に崩す
+            angle = random.uniform(0.0, 360.0)
+            
+            # 特徴量は Bilinear（滑らかに回転）、マスクとラベルは Nearest（クラス番号が混ざらないように）
+            proj_tensor = TF.rotate(proj_tensor, angle, interpolation=TF.InterpolationMode.BILINEAR)
+            mask_t = TF.rotate(mask_t, angle, interpolation=TF.InterpolationMode.NEAREST)
+            
+            # labels_t は [H, W] なので、[1, H, W] にしてから回転し、元に戻す
+            labels_t = labels_t.unsqueeze(0).float()
+            labels_t = TF.rotate(labels_t, angle, interpolation=TF.InterpolationMode.NEAREST)
+            labels_t = labels_t.squeeze(0).long()
+
+            # 4. 点群消去 (DropBlock) はそのまま
+            if torch.rand(1) > 0.5:
+                drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
-            # # 4. Feature Jittering (特徴量のガウシアンノイズ)
-            # # ★ 確率50%で、すべての特徴量にランダムな微小ノイズを加える
-            # if torch.rand(1) > 0.5:
-            #     # mean=0, std=0.02 のノイズを作成
-            #     noise = torch.randn_like(proj_tensor) * 0.02
-            #     # ノイズを足す（マスクされている真空地帯にはノイズを乗せない）
-            #     proj_tensor = (proj_tensor + noise) * mask_t
+            # 5. Feature Jittering はそのまま
+            if torch.rand(1) > 0.5:
+                noise = torch.randn_like(proj_tensor) * 0.05
+                proj_tensor = (proj_tensor + noise) * mask_t
 
+        # Parserの戻り値と合わせるためのダミー変数
         dummy_list = []
         dummy_tensor = torch.tensor(0)
 
@@ -107,7 +115,11 @@ class SemanticKitti(Dataset):
         path_name = path_split[-1].replace(".pt", ".label")
 
         return (
-            proj_tensor, mask_t, labels_t, dummy_list, path_seq, path_name,
+            proj_tensor,      # [4, H, W]
+            mask_t,           # [1, H, W]
+            labels_t,         # [H, W]
+            dummy_list,       # unproj_labels
+            path_seq, path_name,
             dummy_list, dummy_list, dummy_tensor, dummy_list, 
             dummy_list, dummy_list, dummy_tensor, dummy_list, 
             torch.tensor(0), dummy_tensor

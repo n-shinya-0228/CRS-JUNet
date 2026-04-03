@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy.spatial import cKDTree
 
 # ★ BEV投影の心臓部（学習時と同じもの）をインポート
-from lib_old.utils.laserscan_BEV1 import SemLaserScan
+from lib.utils.laserscan_BEV10 import SemLaserScan
 
 def remap_to_original_labels(predictions, learning_map_inv):
     """モデル出力のラベルをSemanticKITTIの元のラベルIDに戻す"""
@@ -19,7 +19,7 @@ def remap_to_original_labels(predictions, learning_map_inv):
     return lut[predictions]
 
 def main():
-    parser = argparse.ArgumentParser("./infer_bev_512.py")
+    parser = argparse.ArgumentParser("./infer_bev_512v3.py")
     parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--arch_cfg', type=str, required=True)
     parser.add_argument('--data_cfg', type=str, required=True)
@@ -82,6 +82,9 @@ def main():
                 proj_tensor[2] = proj_tensor[2] / (torch.max(proj_tensor[2]) + 1e-5) 
                 proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
 
+                # ★ この下にもう1行、追加した高低差チャネルの正規化を足す必要があります
+                proj_tensor[4] = proj_tensor[4] / 3.0  # (0〜3m程度と想定して3で割る)
+
                 # ★ 1. マスク(1チャネル)を作成
                 mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float() # [1, 512, 512]
                 
@@ -127,23 +130,27 @@ def main():
                 # 有効な点にラベルを割り当て
                 final_pred[valid_mask] = pred_2d[proj_y[valid_mask], proj_x[valid_mask]]
 
-                # 4. KNN補完（BEVグリッドの隙間に落ちてラベルが0になった点を補完）
+                # 4. 改良版KNN補完 (k=1, 距離制限付き)
                 missing_mask = final_pred == 0
                 if np.any(missing_mask):
-                    # 補完用の基準座標として、元の3D点群の(X, Y)を使用
                     ref_xy = scan.points[~missing_mask, :2] 
                     ref_lbl = final_pred[~missing_mask]
                     
-                    if len(ref_lbl) > 0: # 参照できる点が存在する場合のみ
+                    if len(ref_lbl) > 0: 
                         tree = cKDTree(ref_xy)
                         qry_xy = scan.points[missing_mask, :2]
-                        _, idxs = tree.query(qry_xy, k=3, workers=-1)
-                        voted = ref_lbl[idxs]
                         
-                        maj = np.apply_along_axis(
-                            lambda row: np.bincount(row, minlength=ref_lbl.max()+1).argmax(),
-                            1, voted)
-                        final_pred[missing_mask] = maj.astype(np.uint32)
+                        # ★ k=1 に変更し、0.5メートル(50cm)以内の点だけを参照する制限を追加！
+                        dists, idxs = tree.query(qry_xy, k=1, distance_upper_bound=0.5, workers=-1)
+                        
+                        # 制限距離内（dists が inf でない）の有効な点だけを抽出
+                        valid_knn = dists != np.inf
+                        
+                        # missing_mask のインデックスを取得し、有効な箇所だけを上書きする
+                        missing_indices = np.where(missing_mask)[0]
+                        valid_missing_indices = missing_indices[valid_knn]
+                        
+                        final_pred[valid_missing_indices] = ref_lbl[idxs[valid_knn]]
 
                 # 5. ラベルをSemanticKITTI形式（250番台など）に戻す
                 final_pred = remap_to_original_labels(final_pred, DATA["learning_map_inv"])
