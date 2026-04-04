@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 
 # ★ 直交座標系の SemanticKitti をインポートする (ファイル名に合わせてください)
-from .SemanticKitti_BEV11 import SemanticKitti 
+from .SemanticKitti_BEV12 import SemanticKitti 
 
 def bev_collate_fn(batch):
     """
