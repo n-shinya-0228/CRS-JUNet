@@ -1,10 +1,10 @@
 from .PSalsaNext import UnpNet
 from .JunNet13 import JunNet13
 from .CRS_JUNet import CRS_JUNet
-from .SJunNet4 import SJunNet4
-from .SJunNet8 import SJunNet8
 from .SJunNet9 import SJunNet9
 from .SJunNet10 import SJunNet10
+from .SJunNet11 import SJunNet11
+from .SJunNet12 import SJunNet12
 
 
 def get_model(model):

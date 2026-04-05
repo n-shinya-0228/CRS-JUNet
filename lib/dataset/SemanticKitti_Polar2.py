@@ -24,7 +24,7 @@ class SemanticKitti(Dataset):
         # ★ 読み込み先を Polar 用のフォルダに変更
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_512")
+            bev_path = os.path.join(self.root, seq, "polar_512_8ch")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -64,6 +64,12 @@ class SemanticKitti(Dataset):
         
         # ch 4: z_diff (高さの差。平坦0m 〜 建物数m)
         proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
+
+        # ch 5: x_diff (X方向の広がり)
+        proj_tensor[5] = torch.clamp(proj_tensor[5], 0.0, 10.0) / 10.0
+
+        # ch 6: y_diff (Y方向の広がり)
+        proj_tensor[6] = torch.clamp(proj_tensor[6], 0.0, 10.0) / 10.0
 
         # ★★★ 極座標 (Polar) 専用の Data Augmentation ★★★
         if self.is_train:

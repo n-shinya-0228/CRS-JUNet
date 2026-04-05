@@ -1,15 +1,14 @@
-# Parser_Polar2.py
+# Parser_BEV3.py
 import os
 import torch
 from torch.utils.data import DataLoader
 
-from .SemanticKitti_Polar2 import SemanticKitti
+# ★ 直交座標系の SemanticKitti をインポートする (ファイル名に合わせてください)
+from .SemanticKitti_BEV13 import SemanticKitti 
 
 def bev_collate_fn(batch):
     """
-    SemanticKitti_Polar1 が返す16要素のタプルをバッチ化する関数。
-    テンソル化すべき最初の3つ（特徴量、マスク、ラベル）だけスタックし、
-    残りのダミーやパス情報はリストのまま返す。
+    SemanticKitti が返すタプルをバッチ化する関数。
     """
     # ★ 変更後: ここが 7ch (B, 7, H, W) になります
     proj_tensor   = torch.stack([b[0] for b in batch], dim=0)
@@ -23,10 +22,7 @@ def bev_collate_fn(batch):
     path_seq      = [b[4] for b in batch]
     path_name     = [b[5] for b in batch]
     
-    # trainer.py の unpack に合わせるためのダミー (Noneや0で埋める)
-    # trainer.py 側で unpack しているのは:
-    # in_vol, proj_mask, proj_labels, _, path_seq, path_name, _, _, proj_range, _, _, _, _, _, _, edge
-    
+    # trainer.py の unpack に合わせるためのダミー
     dummy_list = [None] * len(batch)
     dummy_tensor = torch.zeros(len(batch))
     
@@ -36,7 +32,6 @@ def bev_collate_fn(batch):
         dummy_list, dummy_list, dummy_tensor, dummy_list, 
         dummy_tensor, dummy_tensor
     )
-
 
 class Parser:
     """
