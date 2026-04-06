@@ -5,14 +5,14 @@ train:
   # loss: "xentropy"       # must be either xentropy or iou
   loss: "focal_gamma"
   max_epochs: 100
-  lr: 0.0001               # sgd learning rate
+  lr: 0.00005               # sgd learning rate
   min_lr: 1.0e-5
   wup_epochs: 3         # warmup during first XX epochs (can be float)
   cos_epochs: 97
   momentum: 0.9          # sgd momentum
   lr_decay: 0.9        # learning rate decay per epoch after initial cycle (from min lr)
   w_decay: 0.01        # weight decay
-  batch_size: 6       # batch size
+  batch_size: 3       # batch size
   report_batch: 200       # every x batches, report loss
   report_epoch: 1        # every x epochs, report validation set
   epsilon_w: 0.1       # class weight w = 1 / (content + epsilon_w)
@@ -58,7 +58,7 @@ dataset:
     img_prop:
       # width: 512
       width: 512
-      height: 512
+      height: 256
     img_means: # max_z, mean_z, max_r, density, z_diff
       - 0.0
       - 0.0
