@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_BEV5
+#trainer_BEV6
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -135,7 +135,7 @@ class Trainer():
         # 3. 各ファイルのパスを取得
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_BEV11.py' # 実際に使っているファイル名に合わせてください
+        dataset_name = 'SemanticKitti_BEV10.py' # 実際に使っているファイル名に合わせてください
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         # 4. 情報をテキストファイルに書き出す
@@ -481,11 +481,11 @@ class Trainer():
             if self.gpu:
                 boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-            # ★ in_vol(5ch) と proj_mask_exp(1ch) を結合して 6ch にする！
-            in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
+            # ★ 変更後: in_vol(7ch) と proj_mask_exp(1ch) を結合して 8ch にする！
+            in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
             # forward (JunNet / ChatNet4 returns dict)
-            outs = model(in_vol6)
+            outs = model(in_vol8)
 
             # loss（boundary は proj_mask でマスク平均）
             loss = self._mix_losses(outs, proj_labels,
@@ -494,7 +494,7 @@ class Trainer():
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outs = model(in_vol6)
+                outs = model(in_vol8)
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
 
             # スケーラーを使ってバックプロパゲーション
@@ -594,10 +594,10 @@ class Trainer():
                 if self.gpu:
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-                # ★ in_vol(5ch) + mask(1ch) = 6ch
-                in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
+                # ★ in_vol(7ch) + mask(1ch) = 8ch
+                in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                outs = eval_model(in_vol6) # ★ ここも in_vol6 に変更！
+                outs = eval_model(in_vol8) # ★ ここも in_vol8 に変更！
 
                 loss = self._mix_losses(
                     outs, proj_labels, boundary_gt, proj_mask)

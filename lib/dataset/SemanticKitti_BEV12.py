@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+import random
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 
 class SemanticKitti(Dataset):
@@ -67,34 +69,43 @@ class SemanticKitti(Dataset):
         proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
 
         if self.is_train:
-            # 1. ランダム水平反転 (50%の確率)
+            # 1. ランダム反転 (水平・垂直)
             if torch.rand(1) > 0.5:
                 proj_tensor = torch.flip(proj_tensor, dims=[2])
                 mask_t = torch.flip(mask_t, dims=[2])
                 labels_t = torch.flip(labels_t, dims=[1])
-
-            # 2. ランダム垂直反転 (50%の確率)
             if torch.rand(1) > 0.5:
                 proj_tensor = torch.flip(proj_tensor, dims=[1])
                 mask_t = torch.flip(mask_t, dims=[1])
                 labels_t = torch.flip(labels_t, dims=[0])
 
-            # 3. ランダム90度回転 (0度, 90度, 180度, 270度)
+            # 2. ★ 90度単位の回転に戻す（ピクセルが絶対にボヤけない！）
             k = torch.randint(0, 4, (1,)).item()
             if k > 0:
                 proj_tensor = torch.rot90(proj_tensor, k, [1, 2])
                 mask_t = torch.rot90(mask_t, k, [1, 2])
                 labels_t = torch.rot90(labels_t, k, [0, 1])
 
-            # 点群消去は「超マイルド」にする（Cartesianのピクセルは貴重なため）
-            # ★ 確率50%で、たった 5% だけ消す
+            # 3. ★ 新兵器：ランダム平行移動 (Random Translation)
+            # -25ピクセル〜+25ピクセル (約5m分) の範囲でXY座標をズラし、丸暗記を防ぐ
+            shift_x = torch.randint(-25, 26, (1,)).item()
+            shift_y = torch.randint(-25, 26, (1,)).item()
+            
+            # 補間モードを『NEAREST(最近傍)』にすることで、小物体が絶対に溶けない！
+            proj_tensor = TF.affine(proj_tensor, angle=0.0, translate=[shift_x, shift_y], scale=1.0, shear=0.0, interpolation=TF.InterpolationMode.NEAREST)
+            mask_t = TF.affine(mask_t, angle=0.0, translate=[shift_x, shift_y], scale=1.0, shear=0.0, interpolation=TF.InterpolationMode.NEAREST)
+            
+            labels_t = labels_t.unsqueeze(0).float()
+            labels_t = TF.affine(labels_t, angle=0.0, translate=[shift_x, shift_y], scale=1.0, shear=0.0, interpolation=TF.InterpolationMode.NEAREST)
+            labels_t = labels_t.squeeze(0).long()
+
+            # 4. 点群消去 (DropBlock 5%)
             if torch.rand(1) > 0.5:
                 drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
-            # Feature Jittering (特徴量のガウシアンノイズ) はそのまま残す！
-            # これが直交座標系における最強の正則化になります
+            # 5. Feature Jittering (ガウシアンノイズ)
             if torch.rand(1) > 0.5:
                 noise = torch.randn_like(proj_tensor) * 0.05
                 proj_tensor = (proj_tensor + noise) * mask_t

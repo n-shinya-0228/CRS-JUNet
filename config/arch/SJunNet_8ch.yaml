@@ -24,8 +24,8 @@ train:
 # backbone parameters
 ################################################################################
 model:
-  name: "SJunNet10"  
-  in_channels: 6
+  name: "SJunNet11"  
+  in_channels: 8
   dropout: 0.5
   bn_d: 0.01
   use_mps: False
@@ -58,19 +58,23 @@ dataset:
     img_prop:
       # width: 512
       width: 512
-      height: 256
-    img_means: # max_z, mean_z, max_r, density, z_diff
+      height: 512
+    img_means: # max_z, mean_z, max_r, density, z_diff, x_diff, y_diff
       - 0.0
       - 0.0
       - 0.0
       - 0.0
-      - 0.0    # ★ 追加
+      - 0.0
+      - 0.0    # ★ x_diff 用に追加
+      - 0.0    # ★ y_diff 用に追加
     img_stds: 
       - 1.0
       - 1.0
       - 1.0
       - 1.0
-      - 1.0    # ★ 追加
+      - 1.0
+      - 1.0    # ★ x_diff 用に追加
+      - 1.0    # ★ y_diff 用に追加
 
     fov_up: 3
     fov_down: -23

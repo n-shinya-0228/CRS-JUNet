@@ -24,7 +24,7 @@ class SemanticKitti(Dataset):
         # ★ 読み込み先を Polar 用のフォルダに変更
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_256-512")
+            bev_path = os.path.join(self.root, seq, "polar_512")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -40,7 +40,7 @@ class SemanticKitti(Dataset):
 
         data = torch.load(pt_file, weights_only=True)
         
-        proj_tensor = data['proj_tensor'] # [4, 512, 512]
+        proj_tensor = data['proj_tensor'] # [5, 512, 512]
         mask_t = data['mask_t']           # [1, 512, 512]
         labels_t = data['labels_t']       # [512, 512]
 

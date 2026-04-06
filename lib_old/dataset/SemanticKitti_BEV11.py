@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+import random
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 
 class SemanticKitti(Dataset):
@@ -79,22 +81,26 @@ class SemanticKitti(Dataset):
                 mask_t = torch.flip(mask_t, dims=[1])
                 labels_t = torch.flip(labels_t, dims=[0])
 
-            # 3. ランダム90度回転 (0度, 90度, 180度, 270度)
-            k = torch.randint(0, 4, (1,)).item()
-            if k > 0:
-                proj_tensor = torch.rot90(proj_tensor, k, [1, 2])
-                mask_t = torch.rot90(mask_t, k, [1, 2])
-                labels_t = torch.rot90(labels_t, k, [0, 1])
+            # 3. ★ 無段階ランダム回転 (0度〜360度) に変更！
+            # 16パターンではなく「無限のパターン」を作り出し、ピクセルの並びを毎回微細に崩す
+            angle = random.uniform(0.0, 360.0)
+            
+            # 特徴量は Bilinear（滑らかに回転）、マスクとラベルは Nearest（クラス番号が混ざらないように）
+            proj_tensor = TF.rotate(proj_tensor, angle, interpolation=TF.InterpolationMode.BILINEAR)
+            mask_t = TF.rotate(mask_t, angle, interpolation=TF.InterpolationMode.NEAREST)
+            
+            # labels_t は [H, W] なので、[1, H, W] にしてから回転し、元に戻す
+            labels_t = labels_t.unsqueeze(0).float()
+            labels_t = TF.rotate(labels_t, angle, interpolation=TF.InterpolationMode.NEAREST)
+            labels_t = labels_t.squeeze(0).long()
 
-            # 点群消去は「超マイルド」にする（Cartesianのピクセルは貴重なため）
-            # ★ 確率50%で、たった 5% だけ消す
+            # 4. 点群消去 (DropBlock) はそのまま
             if torch.rand(1) > 0.5:
                 drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.05).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
 
-            # Feature Jittering (特徴量のガウシアンノイズ) はそのまま残す！
-            # これが直交座標系における最強の正則化になります
+            # 5. Feature Jittering はそのまま
             if torch.rand(1) > 0.5:
                 noise = torch.randn_like(proj_tensor) * 0.05
                 proj_tensor = (proj_tensor + noise) * mask_t

@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_BEV5
+#trainer_Polar3
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -135,7 +135,7 @@ class Trainer():
         # 3. 各ファイルのパスを取得
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_BEV11.py' # 実際に使っているファイル名に合わせてください
+        dataset_name = 'SemanticKitti_Polar2.py' # 実際に使っているファイル名に合わせてください
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         # 4. 情報をテキストファイルに書き出す
@@ -189,7 +189,9 @@ class Trainer():
 
         # Model
         self.model = get_model(ARCH['model']['name'])(
-            nclasses=self.parser.get_n_classes())
+            nclasses=self.parser.get_n_classes(),
+            drop=self.ARCH["model"].get("dropout", 0.3)  # ★ YAMLから dropout を読み込んで渡す！
+        )
         self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
@@ -302,7 +304,7 @@ class Trainer():
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界ロスをオフ！
+        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界Lossを完全に無効化
 
     # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
@@ -354,6 +356,15 @@ class Trainer():
         # train & validate
         for epoch in range(self.start_epoch,
                            self.ARCH["train"]["max_epochs"]):
+            
+            # ★ 自動オフスイッチ：Epoch 60 に到達したら Auxiliary Loss を無効化する
+            if epoch == 60:
+                self.logger.info("*" * 80)
+                self.logger.info(f"[Epoch {epoch}] Disabling Auxiliary Losses (w_aux2, w_aux4 -> 0.0) for final fine-tuning!")
+                self.logger.info("*" * 80)
+                self.w_aux2 = 0.0
+                self.w_aux4 = 0.0
+
             acc, iou, loss, update_mean = self.train_epoch(
                 train_loader=self.parser.get_train_set(),
                 model=self.model,
@@ -430,7 +441,7 @@ class Trainer():
         loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
-        if 'boundary' in outs and boundary_gt is not None:
+        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None: # ★ 条件を追加
             bmap = self.boundary_criterion(
                 outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
 
@@ -468,24 +479,26 @@ class Trainer():
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
 
-            # boundary target（無効画素はここで除外）
-            boundary_gt = self._compute_boundary_gt(proj_labels)
             # ★ マスクの次元合わせ
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
             else:
                 proj_mask_exp = proj_mask.float()
 
-            boundary_gt = boundary_gt * proj_mask_exp
+            # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
+            if self.w_boundary > 0:
+                boundary_gt = self._compute_boundary_gt(proj_labels)
+                boundary_gt = boundary_gt * proj_mask_exp
+                if self.gpu:
+                    boundary_gt = boundary_gt.cuda(non_blocking=True)
+            else:
+                boundary_gt = None
             
-            if self.gpu:
-                boundary_gt = boundary_gt.cuda(non_blocking=True)
+            # ★ 変更後: in_vol (7ch) と proj_mask_exp (1ch) を結合して 8ch にする
+            in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            # ★ in_vol(5ch) と proj_mask_exp(1ch) を結合して 6ch にする！
-            in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
-
-            # forward (JunNet / ChatNet4 returns dict)
-            outs = model(in_vol6)
+            # モデルに入力
+            outs = model(in_vol8)    # ← 変更後
 
             # loss（boundary は proj_mask でマスク平均）
             loss = self._mix_losses(outs, proj_labels,
@@ -494,7 +507,7 @@ class Trainer():
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outs = model(in_vol6)
+                outs = model(in_vol8)
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
 
             # スケーラーを使ってバックプロパゲーション
@@ -579,28 +592,30 @@ class Trainer():
                     in_vol = in_vol.cuda()
                     proj_mask = proj_mask.cuda()
                 if self.gpu:
-                    proj_labels = proj_labels.cuda(
-                        non_blocking=True).long()
+                    proj_labels = proj_labels.cuda(non_blocking=True).long()
 
-                boundary_gt = self._compute_boundary_gt(proj_labels)
                 # ★ マスクの次元合わせ
                 if proj_mask.dim() == 3:
                     proj_mask_exp = proj_mask.unsqueeze(1).float()
                 else:
                     proj_mask_exp = proj_mask.float()
 
-                boundary_gt = boundary_gt * proj_mask_exp
+                # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
+                if self.w_boundary > 0:
+                    boundary_gt = self._compute_boundary_gt(proj_labels)
+                    boundary_gt = boundary_gt * proj_mask_exp
+                    if self.gpu:
+                        boundary_gt = boundary_gt.cuda(non_blocking=True)
+                else:
+                    boundary_gt = None
 
-                if self.gpu:
-                    boundary_gt = boundary_gt.cuda(non_blocking=True)
+                # ★ 変更後: in_vol (7ch) と proj_mask_exp (1ch) を結合して 8ch にする
+                in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                # ★ in_vol(5ch) + mask(1ch) = 6ch
-                in_vol6 = torch.cat([in_vol, proj_mask_exp], dim=1)
+                # モデルに入力
+                outs = model(in_vol8)    # ← 変更後
 
-                outs = eval_model(in_vol6) # ★ ここも in_vol6 に変更！
-
-                loss = self._mix_losses(
-                    outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)
