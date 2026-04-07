@@ -1,6 +1,7 @@
 import os
 import torch
 import numpy as np
+import gzip
 from torch.utils.data import Dataset
 
 class SemanticKitti(Dataset):
@@ -38,12 +39,15 @@ class SemanticKitti(Dataset):
     def __getitem__(self, index):
         pt_file = self.scan_files[index]
 
-        data = torch.load(pt_file, weights_only=True)
+        # ★ 1. Gzipで圧縮された .pt ファイルを展開しながらロード
+        with gzip.open(pt_file, 'rb') as f:
+            data = torch.load(f, weights_only=True)
         
-        proj_tensor = data['proj_tensor'] # [5, 512, 512]
-        mask_t = data['mask_t']           # [1, 512, 512]
-        labels_t = data['labels_t']       # [512, 512]
-
+        # ★ 2. 学習のために元のデータ型（float32 や long）に戻す
+        proj_tensor = data['proj_tensor'].float() # [7, H, W]
+        mask_t = data['mask_t'].float()           # [1, H, W]
+        labels_t = data['labels_t'].long()        # [H, W]
+        
         # --- 安全クリッピング付き正規化 (Polar BEV 5ch仕様) ---
         # ch 0: max_z (高さの最大値。地面付近-2m 〜 建物10mくらいまで)
         proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
