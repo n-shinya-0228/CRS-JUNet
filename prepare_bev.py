@@ -8,7 +8,7 @@ import argparse
 import gc
 
 # 既存のモジュールをインポート
-from lib.utils.laserscan_Polar3 import SemLaserScan
+from lib.utils.laserscan_BEV3 import SemLaserScan
 
 def _build_lut(learning_map):
     maxkey = max(learning_map.keys())
@@ -42,7 +42,7 @@ def main():
         lpath = os.path.join(args.dataset, "sequences", seq, "labels")
         
         # 保存先フォルダを作成（sequences/00/bev_512 など）
-        save_path = os.path.join(args.dataset, "sequences", seq, "polar_512_8ch")
+        save_path = os.path.join(args.dataset, "sequences", seq, "bev_256_8ch")
         os.makedirs(save_path, exist_ok=True)
 
         if not os.path.exists(vpath):
