@@ -135,7 +135,7 @@ class Trainer():
         # 3. 各ファイルのパスを取得
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_BEV10.py' # 実際に使っているファイル名に合わせてください
+        dataset_name = 'SemanticKitti_BEV13.py' # 実際に使っているファイル名に合わせてください
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         # 4. 情報をテキストファイルに書き出す

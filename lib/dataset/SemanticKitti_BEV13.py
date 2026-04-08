@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import random
+import gzip
 import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 
@@ -26,7 +27,7 @@ class SemanticKitti(Dataset):
         # 事前計算した 'bev' フォルダ内の .pt ファイルを列挙
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "bev_512")
+            bev_path = os.path.join(self.root, seq, "bev_512_8ch")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -40,12 +41,14 @@ class SemanticKitti(Dataset):
     def __getitem__(self, index):
         pt_file = self.scan_files[index]
 
-        # 1. 事前計算されたテンソルを爆速でロード
-        data = torch.load(pt_file, weights_only=True)
+        # ★ 1. Gzipで圧縮された .pt ファイルを展開しながらロード
+        with gzip.open(pt_file, 'rb') as f:
+            data = torch.load(f, weights_only=True)
         
-        proj_tensor = data['proj_tensor'] # ★ [7, 512, 512] に変更
-        mask_t = data['mask_t']           # [1, 512, 512]
-        labels_t = data['labels_t']       # [512, 512]
+        # ★ 2. 学習のために元のデータ型（float32 や long）に戻す
+        proj_tensor = data['proj_tensor'].float() # [7, H, W]
+        mask_t = data['mask_t'].float()           # [1, H, W]
+        labels_t = data['labels_t'].long()        # [H, W]
 
         # ★ 異常値によるNaNを完全に防ぐための安全対策（クリッピングと正規化）
         # ch 0: max_z (高さの最大値)

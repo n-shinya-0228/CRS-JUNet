@@ -2,7 +2,7 @@
 # JunNet13 (Light) : Shifted Window Attention (Swin-like) + Cached Mask + Reduced Cost
 # in:  (B, 6, H, W)  = [range, x, y, z, remission, obs_mask]
 # out: dict {'logits','aux2','aux4','boundary'}
-# Polar
+# polar
 
 import torch
 import torch.nn as nn
