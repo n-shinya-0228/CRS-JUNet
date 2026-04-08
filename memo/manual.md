@@ -27,20 +27,7 @@
 
 - データの削除
   
-  `rm -rf SemanticKitti/sequences/*/bev`
-
-- Cドライブに空き容量を返す
-  
-  PowerShell
-  
-  wsl --shutdown
-  diskpart
-  select vdisk file="C:\Users\shiny\AppData\Local\wsl\{fc216d3d-7b84-4de5-856f-fa58b2634af0}\ext4.vhdx"
-  attach vdisk readonly
-  compact vdisk
-  detach vdisk
-  exit
-　
+  `rm -rf SemanticKitti/sequences/*/bev`　
 
 --------------------------------------------------------------
 
@@ -183,3 +170,23 @@ Zone.Identifierの消し方
 `find . -type f -name '*:Zone.Identifier' -exec rm {} \;`
 
 --------------------------------------------------------------
+
+Cドライブに空き容量を返す
+--------------------------------------------------------------
+PowerShell
+  
+  `wsl --shutdown`
+
+  `diskpart`
+
+  `select vdisk file="C:\Users\shiny\AppData\Local\wsl\{fc216d3d-7b84-4de5-856f-fa58b2634af0}\ext4.vhdx"`
+
+  `attach vdisk readonly`
+
+  `compact vdisk`
+
+  `detach vdisk`
+
+  `exit`
+
+---------------------------------------------------------------
