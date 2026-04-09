@@ -66,7 +66,8 @@ class FocalLoss(nn.Module):
 
         if self.reduction == 'mean':
             if self.class_weight is not None:
-                return loss.sum() / (w.sum() + 1e-6)
+                # ★ 1e-6 ではなく、より安全な 1e-4 や 1e-3 にしてゼロ割りを強固に防ぐ
+                return loss.sum() / (w.sum() + 1e-4) 
             else:
                 return loss.mean()
         elif self.reduction == 'sum':
@@ -500,8 +501,15 @@ class Trainer():
             # スケーラーを使ってバックプロパゲーション
             self.scaler.scale(loss).backward()
 
+            # ★ 追加: もしLossがNaNになってしまったら、このバッチの更新はスキップして次へ行く！
+            if torch.isnan(loss) or torch.isinf(loss):
+                optimizer.zero_grad() # 危険な勾配を捨てる
+                continue # 次のバッチへ！
+
             self.scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+            
+            # ★ 勾配クリッピングを少し厳しくする（5.0 -> 2.0）
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
 
             self.scaler.step(optimizer)
             self.scaler.update()
