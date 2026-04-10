@@ -1,14 +1,13 @@
-# Parser_BEV2.py
+# Parser_Polar.py
 import os
 import torch
 from torch.utils.data import DataLoader
 
-# ★ 直交座標系の SemanticKitti をインポートする (ファイル名に合わせてください)
-from .SemanticKitti_BEV13 import SemanticKitti 
+from .SemanticKitti_Polar2 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
-    SemanticKitti が返すタプルをバッチ化する関数。
+    SemanticKitti_Polar1 が返す16要素のタプルをバッチ化する関数。
     テンソル化すべき最初の3つ（特徴量、マスク、ラベル）だけスタックし、
     残りのダミーやパス情報はリストのまま返す。
     """
@@ -25,6 +24,9 @@ def bev_collate_fn(batch):
     path_name     = [b[5] for b in batch]
     
     # trainer.py の unpack に合わせるためのダミー (Noneや0で埋める)
+    # trainer.py 側で unpack しているのは:
+    # in_vol, proj_mask, proj_labels, _, path_seq, path_name, _, _, proj_range, _, _, _, _, _, _, edge
+    
     dummy_list = [None] * len(batch)
     dummy_tensor = torch.zeros(len(batch))
     
@@ -34,6 +36,7 @@ def bev_collate_fn(batch):
         dummy_list, dummy_list, dummy_tensor, dummy_list, 
         dummy_tensor, dummy_tensor
     )
+
 
 class Parser:
     """
