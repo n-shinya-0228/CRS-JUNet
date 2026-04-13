@@ -453,7 +453,7 @@ class PolarCSWinBlock(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
-class SJunNet13(nn.Module):
+class SJNet(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256

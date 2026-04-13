@@ -11,11 +11,6 @@ from typing import Tuple
 
 
 def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
-    """
-    極座標 (Polar BEV) に特化した Asymmetric Convolution ブロック。
-    元の conv_bn_act を上書きし、ネットワーク全体に非対称畳み込みを適用する。
-    """
-    # kが1の場合（1x1 Conv）は非対称化する意味がない（エラーにもなる）ので通常のRingConvにする
     if k == 1:
         layers = [
             RingConv2d(in_ch, out_ch, kernel_size=1, stride=s, dilation=d, groups=groups, bias=False),
@@ -25,13 +20,13 @@ def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
             layers.append(nn.ReLU(inplace=True))
         return nn.Sequential(*layers)
 
-    # 1. 通常の 3x3 Ring Convolution
+    # 3x3 Ring Convolution
     conv3x3 = RingConv2d(in_ch, out_ch, kernel_size=k, stride=s, dilation=d, groups=groups, bias=False)
     
-    # 2. 横(角度)方向に特化した 1x3 Ring Convolution
+    # 1x3 Ring Convolution
     conv1x3 = RingConv2d(in_ch, out_ch, kernel_size=(1, k), stride=s, dilation=d, groups=groups, bias=False)
     
-    # 3. 縦(距離)方向に特化した 3x1 Convolution
+    # 3x1 Convolution
     conv3x1 = RingConv2d(in_ch, out_ch, kernel_size=(k, 1), stride=s, dilation=d, groups=groups, bias=False)
 
     class PolarConv(nn.Module):
@@ -44,7 +39,6 @@ def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
             self.act = nn.ReLU(inplace=True) if act else nn.Identity()
 
         def forward(self, x):
-            # 3つの畳み込み結果を足し合わせる
             out = self.c3x3(x) + self.c1x3(x) + self.c3x1(x)
             out = self.bn(out)
             return self.act(out)
@@ -52,14 +46,8 @@ def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
     return PolarConv(conv3x3, conv1x3, conv3x1)
 
 class RingConv2d(nn.Module):
-    """
-    極座標 (Polar BEV) 用の円環畳み込み。
-    横方向 (Azimuth: W軸) は Circular Padding を行い、360度の繋がりを維持する。
-    縦方向 (Radius:  H軸) は通常の Zero Padding を行う。
-    """
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1, groups=1, bias=False):
         super().__init__()
-        # kernel_size が int の場合と tuple の場合両方に対応
         if isinstance(kernel_size, int):
             kernel_size = (kernel_size, kernel_size)
         if isinstance(dilation, int):
@@ -68,7 +56,6 @@ class RingConv2d(nn.Module):
         self.pad_h = ((kernel_size[0] - 1) * dilation[0]) // 2
         self.pad_w = ((kernel_size[1] - 1) * dilation[1]) // 2
 
-        # 畳み込み自体は padding=0 で定義する（手動でパディングするため）
         self.conv = nn.Conv2d(
             in_channels, out_channels, kernel_size, 
             stride=stride, padding=0, dilation=dilation, 
@@ -76,10 +63,6 @@ class RingConv2d(nn.Module):
         )
 
     def forward(self, x):
-        # x: (B, C, H, W)
-        # 1. 横方向 (W軸: Azimuth) は 'circular' (ループ) でパディング
-        # 2. 縦方向 (H軸: Radius) は 'constant' (0埋め) でパディング
-        # F.pad の引数は (左, 右, 上, 下)
         if self.pad_w > 0:
             x = F.pad(x, (self.pad_w, self.pad_w, 0, 0), mode='circular')
         if self.pad_h > 0:
@@ -139,9 +122,7 @@ class BasicBlock(nn.Module):
         x = x + idt
         x = self.act(x)
 
-        # ★ 追加: マスクが与えられた場合、点がない場所の特徴量をゼロにリセット
         if mask is not None:
-            # テンソルのサイズが違う場合（プーリング後など）は、マスクも縮小する
             if x.shape[-2:] != mask.shape[-2:]:
                 mask = F.interpolate(mask, size=x.shape[-2:], mode='nearest')
             x = x * mask
@@ -161,7 +142,7 @@ class ResStage(nn.Module):
 
     def forward(self, x, mask=None):
         for block in self.net:
-            x = block(x, mask) # ★ 各ブロックにマスクを渡す
+            x = block(x, mask) 
         return x
 
 
@@ -191,7 +172,7 @@ class ASPP(nn.Module):
                 self.branches.append(conv_bn_act(in_ch, out_ch, k=3, s=1, p=r, d=r))
 
         self.image_pool = nn.Sequential(
-            nn.AdaptiveMaxPool2d((1, 1)),  # ★ Avg を Max に変更！
+            nn.AdaptiveMaxPool2d((1, 1)),  
             nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
         )
@@ -241,6 +222,46 @@ class UpBlock(nn.Module):
         x = self.conv2(x)
         return x
 
+class UpBlock2(nn.Module):
+    def __init__(self, in_ch, skip_ch, out_ch, drop=0.0, swa_heads: int = 4):
+        super().__init__()
+        self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        self.gate = AttnGate(skip_ch, in_ch, inter_ch=min(skip_ch, in_ch) // 2)
+        concat_ch = in_ch + skip_ch
+        self.swa_ch = out_ch 
+        self.reduce_conv = conv_bn_act(concat_ch, self.swa_ch, k=1, s=1, p=0)
+        self.swa = nn.Sequential(
+            PolarCSWinBlock(
+                self.swa_ch, 
+                window_r=(8, 4), window_a=(4, 8), 
+                heads=swa_heads, 
+                shift_r=(0, 0), shift_a=(0, 0)
+            ),
+            PolarCSWinBlock(
+                self.swa_ch, 
+                window_r=(8, 4), window_a=(4, 8), 
+                heads=swa_heads, 
+                shift_r=(4, 2), shift_a=(2, 4)
+            ),
+        )
+        
+        self.conv1 = conv_bn_act(self.swa_ch, out_ch, 3, 1, 1)
+        self.drop = nn.Dropout2d(drop) if drop > 0 else nn.Identity()
+        self.conv2 = conv_bn_act(out_ch, out_ch, 3, 1, 1)
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        if x.shape[-2:] != skip.shape[-2:]:
+            x = F.interpolate(x, size=skip.shape[-2:], mode="bilinear", align_corners=False)
+        skip = self.gate(skip, x)
+        
+        x = torch.cat([x, skip], dim=1) 
+        x = self.reduce_conv(x)        
+        x = self.swa(x)                 
+        x = self.conv1(x)               
+        x = self.drop(x)
+        x = self.conv2(x)
+        return x
 
 # ---- Shifted Window Attention (Swin-like, minimal) ----
 class RelPosBias(nn.Module):
@@ -327,110 +348,23 @@ def window_reverse(x, window: Tuple[int, int], H, W, B):
     return x
 
 
-class ShiftedSWABlock(nn.Module):
-    def __init__(self, ch, window: Tuple[int, int] = (8, 8), heads=4, shift: Tuple[int, int] = (0, 0)):
-        super().__init__()
-        self.window = window
-        self.shift = shift
-        self.norm1 = nn.LayerNorm(ch)
-        self.attn = WindowAttention(ch, heads=heads, window=window)
-        self.norm2 = nn.LayerNorm(ch)
-        self.mlp = nn.Sequential(nn.Linear(ch, 4 * ch), nn.GELU(), nn.Linear(4 * ch, ch))
-
-        # mask cache: key=(Hp,Wp,device_type,dtype) -> (nW,1,N,N)
-        self._attn_mask_cache = {}
-
-    @torch.no_grad()
-    def _build_attn_mask(self, Hp: int, Wp: int, device, dtype):
-        """Return (nW,1,N,N) mask for a single image (batch展開はしない)."""
-        Wh, Ww = self.window
-        Sh, Sw = self.shift
-
-        img_mask = torch.zeros((1, Hp, Wp, 1), device=device)
-        cnt = 0
-        h_slices = (slice(0, -Wh), slice(-Wh, -Sh), slice(-Sh, None))
-        w_slices = (slice(0, -Ww), slice(-Ww, -Sw), slice(-Sw, None))
-        for hs in h_slices:
-            for ws in w_slices:
-                img_mask[:, hs, ws, :] = cnt
-                cnt += 1
-
-        mask_windows = window_partition(img_mask, self.window).squeeze(-1)  # (nW, N)
-        attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)  # (nW, N, N)
-        attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, 0.0)
-        attn_mask = attn_mask.unsqueeze(1).to(dtype=dtype)  # (nW,1,N,N)
-        return attn_mask
-
-    def forward(self, x):  # (B,C,H,W)
-        B, C, H, W = x.shape
-        Wh, Ww = self.window
-        Sh, Sw = self.shift
-
-        pad_h = (Wh - H % Wh) % Wh
-        pad_w = (Ww - W % Ww) % Ww
-        x = F.pad(x, (0, pad_w, 0, pad_h))
-        Hp, Wp = H + pad_h, W + pad_w
-
-        x = x.permute(0, 2, 3, 1).contiguous()  # (B,Hp,Wp,C)
-
-        # shift
-        if Sh != 0 or Sw != 0:
-            x = torch.roll(x, shifts=(-Sh, -Sw), dims=(1, 2))
-
-        attn_mask = None
-        if Sh != 0 or Sw != 0:
-            key = (Hp, Wp, x.device.type, x.dtype)
-            cached = self._attn_mask_cache.get(key, None)
-            if cached is None or cached.device != x.device or cached.dtype != x.dtype:
-                cached = self._build_attn_mask(Hp, Wp, device=x.device, dtype=x.dtype)
-                self._attn_mask_cache[key] = cached
-
-            # (nW,1,N,N) -> (nW*B,1,N,N)
-            attn_mask = cached.repeat_interleave(B, dim=0)
-
-        # window partition
-        xw = window_partition(x, self.window)  # (nW*B, N, C)
-        if attn_mask is not None:
-            assert attn_mask.shape[0] == xw.shape[0], (attn_mask.shape, xw.shape)
-
-        h = self.norm1(xw)
-        h = self.attn(h, attn_mask=attn_mask)
-        xw = xw + h
-
-        h = self.norm2(xw)
-        h = self.mlp(h)
-        xw = xw + h
-
-        # reverse
-        x = window_reverse(xw, self.window, Hp, Wp, B)
-
-        # reverse shift
-        if Sh != 0 or Sw != 0:
-            x = torch.roll(x, shifts=(Sh, Sw), dims=(1, 2))
-
-        x = x[:, :H, :W, :].contiguous()
-        x = x.permute(0, 3, 1, 2).contiguous()
-        return x
-
 class PolarCSWinBlock(nn.Module):
     """
     Cross-Shaped Window Attention (CSWin) for Polar BEV
-    チャネルを半分に分け、縦長窓(距離方向)と横長窓(角度方向)を並列に計算する極座標最強ブロック。
     """
-    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4, shift_r=(0, 0), shift_a=(0, 0)):
+    def __init__(self, ch, window_r=(8, 4), window_a=(4, 8), heads=4, shift_r=(0, 0), shift_a=(0, 0)):
         super().__init__()
         assert ch % 2 == 0, "Channel must be divisible by 2 for CSWin"
         self.ch_half = ch // 2
         self.heads_half = max(1, heads // 2)
 
-        self.window_r = window_r  # Radius (縦長: 歩行者や車を捉える)
-        self.window_a = window_a  # Azimuth (横長: 壁や道路の繋がりを捉える)
+        self.window_r = window_r 
+        self.window_a = window_a  
         self.shift_r = shift_r
         self.shift_a = shift_a
 
         self.norm1 = nn.LayerNorm(ch)
 
-        # 半分ずつ処理する独立したWindow Attention
         self.attn_r = WindowAttention(self.ch_half, heads=self.heads_half, window=window_r)
         self.attn_a = WindowAttention(self.ch_half, heads=self.heads_half, window=window_a)
 
@@ -478,8 +412,7 @@ class PolarCSWinBlock(nn.Module):
             attn_mask = cached.repeat_interleave(B, dim=0)
 
         xw = window_partition(x, window)
-        
-        # Branch内でのAttention計算
+
         h = attn_module(xw, attn_mask=attn_mask)
         xw = xw + h
 
@@ -493,7 +426,6 @@ class PolarCSWinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
 
-        # 縦横の窓の最大サイズに合わせてパディングを計算
         max_Wh = max(self.window_r[0], self.window_a[0])
         max_Ww = max(self.window_r[1], self.window_a[1])
         pad_h = (max_Wh - H % max_Wh) % max_Wh
@@ -506,14 +438,12 @@ class PolarCSWinBlock(nn.Module):
 
         x = self.norm1(x)
 
-        # ★ ここがキモ！ チャネルを半分に分割して並列処理！
         x_r = x[..., :self.ch_half]
         x_a = x[..., self.ch_half:]
 
         out_r = self._process_branch(x_r, self.window_r, self.shift_r, self.attn_r, self._attn_mask_cache_r)
         out_a = self._process_branch(x_a, self.window_a, self.shift_a, self.attn_a, self._attn_mask_cache_a)
 
-        # 処理が終わったら再度結合
         x = torch.cat([out_r, out_a], dim=-1)
         
         x = idt + x
@@ -523,7 +453,8 @@ class PolarCSWinBlock(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
-class SJunNet11(nn.Module):
+
+class SJNetl(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
@@ -533,10 +464,10 @@ class SJunNet11(nn.Module):
     """
     def __init__(
         self,
-        in_channels: int = 7,     # ★ 5 から 7 に変更（特徴量の数）
+        in_channels: int = 7,     
         nclasses: int = 20,
         drop: float = 0.5,
-        base_ch: int = 48,
+        base_ch: int = 32,
         aspp_out: int = 256,
         swa_heads: int = 4,
         swa_window: Tuple[int, int] = (16, 16),
@@ -547,9 +478,7 @@ class SJunNet11(nn.Module):
 
         assert aspp_out % swa_heads == 0, f"aspp_out({aspp_out}) must be divisible by swa_heads({swa_heads})"
 
-        # Mask-Aware Stem (stabilized)
-        # ★ 入力特徴量を 5 から 7 に変更！ (max_z, mean_z, max_r, density, z_diff, x_diff, y_diff)
-        self.stem_feat = conv_bn_act(7, base_ch, 3, 1, 1)  # ★ ここを 7 にする！
+        self.stem_feat = conv_bn_act(7, base_ch, 3, 1, 1)  
         self.stem_mask = nn.Sequential(
             conv_bn_act(1, base_ch // 2, 1, 1, 0),
             conv_bn_act(base_ch // 2, base_ch, 3, 1, 1),
@@ -561,28 +490,26 @@ class SJunNet11(nn.Module):
         self.enc1 = ResStage(base_ch, base_ch * 2, num_blocks=2, pool=True, drop=drop)
         self.enc2 = ResStage(base_ch * 2, base_ch * 4, num_blocks=2, pool=True, drop=drop)
         self.enc3 = ResStage(base_ch * 4, base_ch * 8, num_blocks=2, pool=True, drop=drop)
+        self.enc4 = ResStage(base_ch * 8, base_ch * 8, num_blocks=2, pool=True, drop=drop)
 
         # bottleneck
         self.aspp = ASPP(base_ch * 8, aspp_out)
 
         # ---- lighter SWA: 2 blocks fixed (non-shift + shift) ----
         Wh, Ww = swa_window
-        # ---- Polar CSWin (Cross-Shaped Window) ----
-        # 特徴量サイズ (32x32) に対して、窓が大きすぎないように (8, 4) と (4, 8) に縮小
+        # Polar CSWin
         self.swa = nn.Sequential(
-            # ブロック1: シフトなし
             PolarCSWinBlock(
                 aspp_out, 
-                window_r=(8, 4), window_a=(4, 8),   # ★ (16,4) -> (8,4) へ変更
+                window_r=(8, 4), window_a=(4, 8), 
                 heads=swa_heads, 
                 shift_r=(0, 0), shift_a=(0, 0)
             ),
-            # ブロック2: 半分シフト
             PolarCSWinBlock(
                 aspp_out, 
-                window_r=(8, 4), window_a=(4, 8),   # ★ (16,4) -> (8,4) へ変更
+                window_r=(8, 4), window_a=(4, 8), 
                 heads=swa_heads, 
-                shift_r=(4, 2), shift_a=(2, 4)      # ★ シフト量も窓の半分に変更
+                shift_r=(4, 2), shift_a=(2, 4)
             ),
         )
 
@@ -590,11 +517,13 @@ class SJunNet11(nn.Module):
         self.lka = LKA(base_ch * 8, k=7, d=3)
 
         # decoder
+        self.up4 = UpBlock(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop)
         self.up3 = UpBlock(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop)
         self.up2 = UpBlock(base_ch * 4, base_ch * 2, base_ch * 2, drop=drop)
         self.up1 = UpBlock(base_ch * 2, base_ch, base_ch, drop=drop)
 
         # heads
+        self.aux8_head = nn.Conv2d(base_ch * 8, nclasses, 1)
         self.aux4_head = nn.Conv2d(base_ch * 4, nclasses, 1)
         self.aux2_head = nn.Conv2d(base_ch * 2, nclasses, 1)
 
@@ -607,41 +536,29 @@ class SJunNet11(nn.Module):
         self.final_logits = nn.Conv2d(base_ch, nclasses, 1)
 
     def forward(self, x):
-        # ★ x は全部で8ch (インデックス0〜7)
-        feat_in = x[:, :7, :, :]  # 特徴量7ch
-        m = x[:, 7:8, :, :]       # バイナリマスク(0 or 1)
+        feat_in = x[:, :7, :, :]  
+        m = x[:, 7:8, :, :]       
 
-        # 1. 通常の特徴量抽出
-        s0 = self.stem_feat(feat_in)
-        
-        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # ★ 真のゲート機構（Spatial Attention）を発動！
-        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 2. マスクの形（点の分布）から「重要度マップ」を学習・生成する
-        mask_attn = torch.sigmoid(self.stem_mask(m)) 
-        
-        # 3. 特徴量に重要度マップを掛け合わせ、gate_scale でその「効き具合」を調整
-        s0 = s0 * (1.0 + mask_attn * self.gate_scale)
-        
-        # 4. 最後に絶対的なハードマスク（真空地帯の完全ゼロ化）を掛ける
-        s0 = s0 * m
+        # mask-aware gate
+        s0 = self.stem_feat(feat_in)              # (B, C, H, W)
+        g  = torch.tanh(self.stem_mask(m))        # [-1,1]に制限
+        s0 = s0 * (1.0 + g)                       # ゲート（観測=正、欠測=抑制）  ← 改良点
 
-        B, _, H, W = x.shape
-
-        # ★ エンコーダーの各ステージにマスクを渡す
-        s1 = self.enc1(s0, m)
-        s2 = self.enc2(s1, m)
-        s3 = self.enc3(s2, m)
-
-        b = self.aspp(s3)
-        b = self.swa(b)
+        # encoder-decoder as before
+        B, C, H, W = x.shape
+        s1 = self.enc1(s0)  
+        s2 = self.enc2(s1)  
+        s3 = self.enc3(s2)
+        s4 = self.enc4(s3)  
+        b = self.aspp(s4) 
         b = self.bottleneck_proj(b)
         b = self.lka(b)
-
-        d3 = self.up3(b, s2)
+        d4 = self.up4(b, s3)
+        d3 = self.up3(d4, s2)
         d2 = self.up2(d3, s1)
         d1 = self.up1(d2, s0)
 
+        aux8 = F.interpolate(self.aux8_head(s4), size=(H, W), mode="bilinear", align_corners=False)
         aux4 = F.interpolate(self.aux4_head(d3), size=(H, W), mode="bilinear", align_corners=False)
         aux2 = F.interpolate(self.aux2_head(d2), size=(H, W), mode="bilinear", align_corners=False)
 
@@ -652,4 +569,4 @@ class SJunNet11(nn.Module):
 
         boundary = F.interpolate(self.boundary_head(feat), size=(H, W), mode="bilinear", align_corners=False)
         logits = self.final_logits(feat)
-        return {"logits": logits, "aux2": aux2, "aux4": aux4, "boundary": boundary}
+        return {"logits": logits, "aux2": aux2, "aux4": aux4, "aux8": aux8, "boundary": boundary}
