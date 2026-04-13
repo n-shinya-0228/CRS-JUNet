@@ -352,7 +352,7 @@ class PolarCSWinBlock(nn.Module):
     """
     Cross-Shaped Window Attention (CSWin) for Polar BEV
     """
-    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4, shift_r=(0, 0), shift_a=(0, 0)):
+    def __init__(self, ch, window_r=(8, 4), window_a=(4, 8), heads=4, shift_r=(0, 0), shift_a=(0, 0)):
         super().__init__()
         assert ch % 2 == 0, "Channel must be divisible by 2 for CSWin"
         self.ch_half = ch // 2
@@ -453,7 +453,8 @@ class PolarCSWinBlock(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
-class SJNet(nn.Module):
+
+class SJNetl(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
@@ -516,7 +517,7 @@ class SJNet(nn.Module):
         self.lka = LKA(base_ch * 8, k=7, d=3)
 
         # decoder
-        self.up4 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads)
+        self.up4 = UpBlock(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop)
         self.up3 = UpBlock(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop)
         self.up2 = UpBlock(base_ch * 4, base_ch * 2, base_ch * 2, drop=drop)
         self.up1 = UpBlock(base_ch * 2, base_ch, base_ch, drop=drop)
