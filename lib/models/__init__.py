@@ -4,6 +4,7 @@ from .CRS_JUNet import CRS_JUNet
 from .SJunNet11 import SJunNet11
 from .SJunNet12 import SJunNet12
 from .SJNet import SJNet
+from .SJNet2 import SJNet2
 from .SJNetl import SJNetl
 
 def get_model(model):
