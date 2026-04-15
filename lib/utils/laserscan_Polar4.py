@@ -3,6 +3,28 @@
 import numpy as np
 import cv2
 
+# labelの優先度をここで決める
+PRIORITY_MAP = np.ones(300, dtype=np.int32) # 基本はすべて1 
+PRIORITY_MAP[0] = 0 # 無効
+
+# Priority 3 
+priority_3_classes = [
+    11, 15, # bicycle, motorcycle
+    30, 31, 32, # person, bicyclist, motorcyclist
+    71, # trunk
+    80, 81, # pole, traffic-sign
+    253, 254, 255 # moving-bicyclist, moving-person, moving-motorcyclist
+]
+PRIORITY_MAP[priority_3_classes] = 3
+
+# Priority 2
+priority_2_classes = [
+    18, 20, # truck, other-vehicle
+    51, # fence
+    257, 259 # moving-truck, moving-other-vehicle
+]
+PRIORITY_MAP[priority_2_classes] = 2
+
 # LiDARスキャンデータ（xyz座標と反射強度r）を保持するクラス。
 class LaserScan:
     """Class that contains LaserScan with x,y,z,r"""
@@ -172,13 +194,13 @@ class LaserScan:
             pseudo_image[u_y[i], u_x[i], 5] = np.max(cell_x) - np.min(cell_x)
             pseudo_image[u_y[i], u_x[i], 6] = np.max(cell_y) - np.min(cell_y)
 
-            # BEVにおいては「そのピクセルの中で一番高い位置にある点」を代表点として扱う
-            max_idx_in_cell = np.argmax(cell_z)
-            orig_idx = valid_indices[cell_mask][max_idx_in_cell]
+            # 優先度をつけてlabelを決定
+            target_idx_in_cell = -1 
+            orig_idx = valid_indices[cell_mask][target_idx_in_cell]
 
             self.proj_range[u_y[i], u_x[i]] = np.max(cell_z)
-            self.proj_xyz[u_y[i], u_x[i]] = pts_f[cell_mask][max_idx_in_cell]
-            self.proj_remission[u_y[i], u_x[i]] = cell_r[max_idx_in_cell]
+            self.proj_xyz[u_y[i], u_x[i]] = pts_f[cell_mask][target_idx_in_cell]
+            self.proj_remission[u_y[i], u_x[i]] = cell_r[target_idx_in_cell]
             self.proj_idx[u_y[i], u_x[i]] = orig_idx
             self.proj_mask[u_y[i], u_x[i]] = 1
 
@@ -246,7 +268,17 @@ class SemLaserScan(LaserScan):
 
         assert ((self.sem_label + (self.inst_label << 16) == label).all())
 
+        point_priorities = PRIORITY_MAP[self.sem_label.reshape(-1)]
+        sort_idx = np.argsort(point_priorities)
+        
+        # 座標も、反射強度も、ラベルも、全部「優先度の低い順」に並び替える
+        self.points = self.points[sort_idx]
+        self.remissions = self.remissions[sort_idx]
+        self.sem_label = self.sem_label[sort_idx]
+        self.inst_label = self.inst_label[sort_idx]
+
         if self.project:
+            self.do_pseudo_image_projection()
             self.do_label_projection()
 
     def colorize(self):

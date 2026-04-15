@@ -100,6 +100,22 @@ def set_tensorboard(path):
     return SummaryWriter(path)
 
 
+def apply_polarmix(proj_tensor, labels_t):
+    B, C, H, W = proj_tensor.shape
+    
+    rand_index = torch.randperm(B).to(proj_tensor.device)
+    
+    cut_w = np.random.randint(0, W)
+    
+    mixed_proj = proj_tensor.clone()
+    mixed_labels = labels_t.clone()
+    
+    mixed_proj[:, :, :, cut_w:] = proj_tensor[rand_index, :, :, cut_w:]
+    mixed_labels[:, :, cut_w:] = labels_t[rand_index, :, cut_w:]
+    
+    return mixed_proj, mixed_labels
+
+
 class Trainer():
     def __init__(self, ARCH, DATA, datadir, logdir, logger, pretrained=None, use_mps=True):
         self.ARCH = ARCH
@@ -117,28 +133,24 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-
-        # === 修正版：使用したファイル情報をテキストとして保存 ===
+        
+        # save
         import sys
         from datetime import datetime
 
-        # 1. ログディレクトリの作成（念のため）
         os.makedirs(self.log, exist_ok=True)
 
-        # 2. 実行したコマンドライン引数から YAML ファイルのパスを取得
         yaml_path = None
         for i, arg in enumerate(sys.argv):
             if arg == '--arch_cfg' and i + 1 < len(sys.argv):
                 yaml_path = sys.argv[i + 1]
                 break
 
-        # 3. 各ファイルのパスを取得
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar2.py' # 実際に使っているファイル名に合わせてください
+        dataset_name = 'SemanticKitti_Polar2.py' # ファイル名変更
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
-        # 4. 情報をテキストファイルに書き出す
         used_files_txt = osp.join(self.log, 'used_files.txt')
         with open(used_files_txt, 'w') as f:
             f.write("=== Training Execution Log ===\n")
@@ -155,7 +167,6 @@ class Trainer():
             f.write(f"Log Dir     : {self.log}\n")
 
         self.logger.info(f"Saved execution info to {used_files_txt}")
-        # === 修正版ここまで ===
 
         # Data
         self.parser = Parser(root=self.datadir,
@@ -171,14 +182,10 @@ class Trainer():
             x_cl = self.parser.to_xentropy(cl)
             content[x_cl] += freq
             
-        # ★ マイルドで安全な重み付けに変更
-        # 頻度を全体の割合（確率）に変換してスケールを合わせる
         prob = content / (content.sum() + 1e-6)
         
-        # 安全な逆数を計算（epsilon_w は YAMLから 0.05 を読み込む想定）
         self.loss_w = 1 / (prob + epsilon_w)
         
-        # ★ 超重要：ペナルティの最大値を「20.0倍」に抑え込み、NaN発散を完全に防ぐ！
         self.loss_w = torch.clamp(self.loss_w, max=20.0)
 
         for x_cl, w in enumerate(self.loss_w):
@@ -190,7 +197,7 @@ class Trainer():
         # Model
         self.model = get_model(ARCH['model']['name'])(
             nclasses=self.parser.get_n_classes(),
-            drop=self.ARCH["model"].get("dropout", 0.3)  # ★ YAMLから dropout を読み込んで渡す！
+            drop=self.ARCH["model"].get("dropout", 0.5)  
         )
         self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
@@ -305,15 +312,13 @@ class Trainer():
         self.w_aux4 = 0.15
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  # ★ ここを 0.0 にして境界Lossを完全に無効化
+        self.w_boundary = 0.0  
 
-    # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
         for p in self.ema_model.parameters():
             p.requires_grad_(False)
 
-    # ★ 修正版: EMA 更新（float のみ EMA、その他はコピー）
     def _update_ema(self):
         if not self.use_ema or self.ema_model is None:
             return
@@ -358,7 +363,7 @@ class Trainer():
         for epoch in range(self.start_epoch,
                            self.ARCH["train"]["max_epochs"]):
             
-            # ★ 自動オフスイッチ：Epoch 60 に到達したら Auxiliary Loss を無効化する
+            # Epoch 60 に到達したら Auxiliary Loss を無効化する
             if epoch == 60:
                 self.logger.info("*" * 80)
                 self.logger.info(f"[Epoch {epoch}] Disabling Auxiliary Losses (w_aux2, w_aux4 -> 0.0) for final fine-tuning!")
@@ -423,7 +428,6 @@ class Trainer():
         self.logger.info('Finished Training')
         return
 
-    # -------- boundary は proj_mask でマスク平均、Lovasz はそのまま --------
     def _mix_losses(self, outs, labels, boundary_gt, proj_mask):
         # outs is dict from JunNet / ChatNet4
         logits = outs['logits']
@@ -483,13 +487,11 @@ class Trainer():
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
 
-            # ★ マスクの次元合わせ
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
             else:
                 proj_mask_exp = proj_mask.float()
 
-            # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
             if self.w_boundary > 0:
                 boundary_gt = self._compute_boundary_gt(proj_labels)
                 boundary_gt = boundary_gt * proj_mask_exp
@@ -497,16 +499,13 @@ class Trainer():
                     boundary_gt = boundary_gt.cuda(non_blocking=True)
             else:
                 boundary_gt = None
-            
-            # ★ 変更後: in_vol (7ch) と proj_mask_exp (1ch) を結合して 8ch にする
+     
             in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            # # モデルに入力
-            # outs = model(in_vol8)    # ← 変更後
+            outs = model(in_vol8)    
 
-            # # loss（boundary は proj_mask でマスク平均）
-            # loss = self._mix_losses(outs, proj_labels,
-            #                         boundary_gt, proj_mask)
+            loss = self._mix_losses(outs, proj_labels,
+                                    boundary_gt, proj_mask)
 
             optimizer.zero_grad()
             # autocastブロックで囲む
@@ -598,13 +597,11 @@ class Trainer():
                 if self.gpu:
                     proj_labels = proj_labels.cuda(non_blocking=True).long()
 
-                # ★ マスクの次元合わせ
                 if proj_mask.dim() == 3:
                     proj_mask_exp = proj_mask.unsqueeze(1).float()
                 else:
                     proj_mask_exp = proj_mask.float()
 
-                # ★ 重みが0の時は重いSobel計算（境界抽出）を完全にスキップして高速化！
                 if self.w_boundary > 0:
                     boundary_gt = self._compute_boundary_gt(proj_labels)
                     boundary_gt = boundary_gt * proj_mask_exp
@@ -613,11 +610,9 @@ class Trainer():
                 else:
                     boundary_gt = None
 
-                # ★ 変更後: in_vol (7ch) と proj_mask_exp (1ch) を結合して 8ch にする
                 in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                # モデルに入力
-                outs = model(in_vol8)    # ← 変更後
+                outs = model(in_vol8)    
 
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
