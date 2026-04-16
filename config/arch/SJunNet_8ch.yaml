@@ -24,7 +24,7 @@ train:
 # backbone parameters
 ################################################################################
 model:
-  name: "SJNet"  
+  name: "SJNetl" 
   in_channels: 8
   dropout: 0.5
   bn_d: 0.01
