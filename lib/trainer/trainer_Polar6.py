@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar5
+#trainer_Polar6
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -100,20 +100,24 @@ def set_tensorboard(path):
     return SummaryWriter(path)
 
 
-def apply_polarmix(proj_tensor, labels_t):
-    B, C, H, W = proj_tensor.shape
-    
-    rand_index = torch.randperm(B).to(proj_tensor.device)
-    
+def apply_polarmix(in_vol, proj_mask, proj_labels):
+    B, C, H, W = in_vol.shape
+    rand_index = torch.randperm(B).to(in_vol.device)
     cut_w = np.random.randint(0, W)
-    
-    mixed_proj = proj_tensor.clone()
-    mixed_labels = labels_t.clone()
-    
-    mixed_proj[:, :, :, cut_w:] = proj_tensor[rand_index, :, :, cut_w:]
-    mixed_labels[:, :, cut_w:] = labels_t[rand_index, :, cut_w:]
-    
-    return mixed_proj, mixed_labels
+
+    mixed_vol = in_vol.clone()
+    mixed_vol[:, :, :, cut_w:] = in_vol[rand_index, :, :, cut_w:]
+
+    mixed_mask = proj_mask.clone()
+    if mixed_mask.dim() == 3:
+        mixed_mask[:, :, cut_w:] = proj_mask[rand_index, :, cut_w:]
+    else:
+        mixed_mask[:, :, :, cut_w:] = proj_mask[rand_index, :, :, cut_w:]
+
+    mixed_labels = proj_labels.clone()
+    mixed_labels[:, :, cut_w:] = proj_labels[rand_index, :, cut_w:]
+
+    return mixed_vol, mixed_mask, mixed_labels
 
 
 class Trainer():
@@ -257,30 +261,29 @@ class Trainer():
                                      weight_decay=self.ARCH["train"]["w_decay"])
 
         # Scheduler: warmup -> const -> cosine
-        steps_per_epoch = self.parser.get_train_size()
-        up_steps = int(self.ARCH["train"]["wup_epochs"] * steps_per_epoch)
-        stay_steps = int(
-            (self.ARCH["train"]["max_epochs"] - self.ARCH["train"]["wup_epochs"] -
-             self.ARCH["train"]["cos_epochs"]) * steps_per_epoch)
-        down_steps = int(self.ARCH["train"]["cos_epochs"] * steps_per_epoch)
+        up_epochs = int(self.ARCH["train"]["wup_epochs"])
+        max_epochs = int(self.ARCH["train"]["max_epochs"])
+        down_epochs = int(self.ARCH["train"]["cos_epochs"])
+        stay_epochs = max_epochs - up_epochs - down_epochs
 
         warmup_scheduler = LambdaLR(
             optimizer=self.optimizer,
-            lr_lambda=lambda step: 0.1 + 0.9 * (step / up_steps)
-            if step < max(up_steps, 1) else 1.0)
+            lr_lambda=lambda epoch: 0.1 + 0.9 * (epoch / up_epochs) 
+            if epoch < max(up_epochs, 1) else 1.0)
 
-        const_scheduler = StepLR(optimizer=self.optimizer,
-                                 step_size=max(stay_steps, 1), gamma=1.0)
+        const_scheduler = StepLR(
+            optimizer=self.optimizer,
+            step_size=max(stay_epochs, 1), gamma=1.0)
 
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
-            T_max=max(down_steps, 1),
+            T_max=max(down_epochs, 1),
             eta_min=self.ARCH["train"]["lr"] * 0.00001)
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
             schedulers=[warmup_scheduler, const_scheduler, cosine_scheduler],
-            milestones=[up_steps, stay_steps + up_steps])
+            milestones=[up_epochs, up_epochs + stay_epochs])
 
         # (optional) resume
         self.start_epoch = 0
@@ -377,10 +380,11 @@ class Trainer():
                 optimizer=self.optimizer,
                 epoch=epoch,
                 evaluator=self.evaluator,
-                scheduler=self.scheduler,
                 color_fn=None,
                 report=self.ARCH["train"]["report_batch"]
             )
+
+            self.scheduler.step()
 
             self.writer.add_scalar('training/acc', acc, epoch)
             self.writer.add_scalar('training/mIoU', iou, epoch)
@@ -465,7 +469,7 @@ class Trainer():
         return loss
 
     def train_epoch(self, train_loader, model, optimizer, epoch,
-                    evaluator, scheduler, color_fn, report=10):
+                    evaluator, color_fn, report=10):
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
@@ -486,6 +490,9 @@ class Trainer():
             if self.gpu:
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
+            
+            if np.random.rand() < 0.5: 
+                in_vol, proj_mask, proj_labels = apply_polarmix(in_vol, proj_mask, proj_labels)
 
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
@@ -502,10 +509,6 @@ class Trainer():
      
             in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            outs = model(in_vol8)    
-
-            loss = self._mix_losses(outs, proj_labels,
-                                    boundary_gt, proj_mask)
 
             optimizer.zero_grad()
             # autocastブロックで囲む
@@ -570,8 +573,6 @@ class Trainer():
                         lcur=losses.val, lavg=losses.avg,
                         acur=acc.val, aavg=acc.avg,
                         icur=iou.val, iavg=iou.avg))
-
-            scheduler.step()
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 
