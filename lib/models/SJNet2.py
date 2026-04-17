@@ -368,7 +368,7 @@ class PolarCSWinBlock(nn.Module):
     """
     Cross-Shaped Window Attention (CSWin) for Polar BEV
     """
-    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4, shift_r=(0, 0), shift_a=(0, 0)):
+    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4, shift_r=(0, 0), shift_a=(0, 0), drop_path=0.0):
         super().__init__()
         assert ch % 2 == 0, "Channel must be divisible by 2 for CSWin"
         self.ch_half = ch // 2

@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar5
+#trainer_Polar6
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -257,30 +257,29 @@ class Trainer():
                                      weight_decay=self.ARCH["train"]["w_decay"])
 
         # Scheduler: warmup -> const -> cosine
-        steps_per_epoch = self.parser.get_train_size()
-        up_steps = int(self.ARCH["train"]["wup_epochs"] * steps_per_epoch)
-        stay_steps = int(
-            (self.ARCH["train"]["max_epochs"] - self.ARCH["train"]["wup_epochs"] -
-             self.ARCH["train"]["cos_epochs"]) * steps_per_epoch)
-        down_steps = int(self.ARCH["train"]["cos_epochs"] * steps_per_epoch)
+        up_epochs = int(self.ARCH["train"]["wup_epochs"])
+        max_epochs = int(self.ARCH["train"]["max_epochs"])
+        down_epochs = int(self.ARCH["train"]["cos_epochs"])
+        stay_epochs = max_epochs - up_epochs - down_epochs
 
         warmup_scheduler = LambdaLR(
             optimizer=self.optimizer,
-            lr_lambda=lambda step: 0.1 + 0.9 * (step / up_steps)
-            if step < max(up_steps, 1) else 1.0)
+            lr_lambda=lambda epoch: 0.1 + 0.9 * (epoch / up_epochs) 
+            if epoch < max(up_epochs, 1) else 1.0)
 
-        const_scheduler = StepLR(optimizer=self.optimizer,
-                                 step_size=max(stay_steps, 1), gamma=1.0)
+        const_scheduler = StepLR(
+            optimizer=self.optimizer,
+            step_size=max(stay_epochs, 1), gamma=1.0)
 
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
-            T_max=max(down_steps, 1),
+            T_max=max(down_epochs, 1),
             eta_min=self.ARCH["train"]["lr"] * 0.00001)
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
             schedulers=[warmup_scheduler, const_scheduler, cosine_scheduler],
-            milestones=[up_steps, stay_steps + up_steps])
+            milestones=[up_epochs, up_epochs + stay_epochs])
 
         # (optional) resume
         self.start_epoch = 0
@@ -377,10 +376,11 @@ class Trainer():
                 optimizer=self.optimizer,
                 epoch=epoch,
                 evaluator=self.evaluator,
-                scheduler=self.scheduler,
                 color_fn=None,
                 report=self.ARCH["train"]["report_batch"]
             )
+
+            self.scheduler.step()
 
             self.writer.add_scalar('training/acc', acc, epoch)
             self.writer.add_scalar('training/mIoU', iou, epoch)
@@ -465,7 +465,7 @@ class Trainer():
         return loss
 
     def train_epoch(self, train_loader, model, optimizer, epoch,
-                    evaluator, scheduler, color_fn, report=10):
+                    evaluator,  color_fn, report=10):
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
@@ -571,7 +571,7 @@ class Trainer():
                         acur=acc.val, aavg=acc.avg,
                         icur=iou.val, iavg=iou.avg))
 
-            scheduler.step()
+            # scheduler.step()
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 
