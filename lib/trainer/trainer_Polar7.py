@@ -536,8 +536,8 @@ class Trainer():
             with torch.no_grad():
                 preds = outs['logits'].argmax(dim=1)
                 max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
-                preds[(preds == 7) & (max_z < 1.2)] = 2  # 低い部分は bicycle 
-                preds[(preds == 8) & (max_z < 1.2)] = 3  # 低い部分は motorcycle 
+                preds[(preds == 7) & (max_z < -0.8)] = 2  # 低い部分は bicycle 
+                preds[(preds == 8) & (max_z < -0.8)] = 3  # 低い部分は motorcycle 
                 evaluator.addBatch(preds, proj_labels)
                 accuracy = evaluator.getacc()
                 jaccard, _ = evaluator.getIoU()
@@ -627,8 +627,8 @@ class Trainer():
                 preds = outs['logits'].argmax(dim=1)
                 max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
                 
-                preds[(preds == 7) & (max_z < 1.2)] = 2
-                preds[(preds == 8) & (max_z < 1.2)] = 3
+                preds[(preds == 7) & (max_z < -0.8)] = 2
+                preds[(preds == 8) & (max_z < -0.8)] = 3
                 
                 evaluator.addBatch(preds, proj_labels)
 

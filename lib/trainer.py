@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar6
+#trainer_Polar7
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
@@ -509,7 +509,10 @@ class Trainer():
      
             in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-
+            train_labels = proj_labels.clone()
+            train_labels[train_labels == 2] = 7  # bicycle(2) を bicyclist(7) に統合
+            train_labels[train_labels == 3] = 8  # motorcycle(3) を motorcyclist(8) に統合
+        
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
@@ -532,6 +535,9 @@ class Trainer():
             loss_val = loss.mean().item()
             with torch.no_grad():
                 preds = outs['logits'].argmax(dim=1)
+                max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
+                preds[(preds == 7) & (max_z < -0.8)] = 2  # 低い部分は bicycle 
+                preds[(preds == 8) & (max_z < -0.8)] = 3  # 低い部分は motorcycle 
                 evaluator.addBatch(preds, proj_labels)
                 accuracy = evaluator.getacc()
                 jaccard, _ = evaluator.getIoU()
@@ -619,6 +625,11 @@ class Trainer():
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)
+                max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
+                
+                preds[(preds == 7) & (max_z < -0.8)] = 2
+                preds[(preds == 8) & (max_z < -0.8)] = 3
+                
                 evaluator.addBatch(preds, proj_labels)
 
         acc_v = evaluator.getacc()
