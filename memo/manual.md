@@ -153,6 +153,10 @@ https://semantic-kitti.org/dataset.html
 
 ここからダウンロードしてCRS-JUNet/のところに置く
 
+https://www.codabench.org/competitions/12448/#/pages-tab
+
+ここで11~21まで推論したものを評価する
+
 --------------------------------------------------------------
 
 Zone.Identifierの消し方

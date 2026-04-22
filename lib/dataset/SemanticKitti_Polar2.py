@@ -22,7 +22,7 @@ class SemanticKitti(Dataset):
 
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_512_prlb")
+            bev_path = os.path.join(self.root, seq, "polar_512_8ch")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans

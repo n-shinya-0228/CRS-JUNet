@@ -40,7 +40,7 @@ import torch
 import shutil
 import time
 
-from lib.dataset.Parser1 import Parser
+from lib.dataset.Parser import Parser
 
 
 # ------------------------------
@@ -49,21 +49,17 @@ from lib.dataset.Parser1 import Parser
 def import_model(model_name: str):
     model_name = model_name.lower()
     if model_name == "chatnet4":
-        try:
-            from lib.models.ChatNet4 import ChatNet4
-        except Exception:
-            # fallback if you placed file locally
-            from lib.models.ChatNet4 import ChatNet4
+        from lib.models.ChatNet4 import ChatNet4
         return ChatNet4
     elif model_name == "junnet13":
-        try:
-            from lib.models.JunNet13 import JunNet13
-        except Exception:
-            # fallback for the uploaded file name
-            from lib.models.JunNet13 import JunNet13
+        from lib.models.JunNet13 import JunNet13
         return JunNet13
+    elif model_name == "crs_junet":  # ← ここを追加！（引数は小文字に変換されて渡ってきます）
+        # ※もしファイル名やクラス名が SJNet.py なら、以下を from lib.models.SJNet import SJNet に直してください
+        from lib.models.CRS_JUNet import CRS_JUNet 
+        return CRS_JUNet
     else:
-        raise ValueError(f"Unknown --model {model_name}. Choose from: chatnet4, junnet13")
+        raise ValueError(f"Unknown --model {model_name}.")
 
 
 # ------------------------------
@@ -205,8 +201,8 @@ def load_ckpt_into_model(model, ckpt_path: str, strict: bool = True):
 # Args
 # ------------------------------
 def build_argparser():
-    p = argparse.ArgumentParser("2D->3D inference (NO KNN) with FPS (ChatNet4/JunNet13)")
-    p.add_argument("--model", required=True, choices=["chatnet4", "junnet13"],
+    p = argparse.ArgumentParser("2D->3D inference (NO KNN) with FPS")
+    p.add_argument("--model", required=True, type=str,
                    help="Select model architecture")
     p.add_argument("--dataset", "-d", required=True, type=str,
                    help="SemanticKITTI dataset root (folder containing 'sequences')")
