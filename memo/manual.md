@@ -3,7 +3,15 @@
 --------------------------------------------------------------
 - 学習
 
-  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --log logs/BEV_`
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --log logs/BEV_`
+
+- 学習の再開
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best.path --log logs/`
+
+- ほかのモデルをベースに学習
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml -p logs/a/best.path --log logs/BEV_`
 
 - グラフの確認
 
@@ -11,7 +19,7 @@
 
 - 推論
 
-  `uv run python infer_bev_512v3.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
+  `uv run python infer_bev_512_8ch.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
 
 - 評価　
 
@@ -152,6 +160,10 @@
 https://semantic-kitti.org/dataset.html
 
 ここからダウンロードしてCRS-JUNet/のところに置く
+
+https://www.codabench.org/competitions/12448/#/pages-tab
+
+ここで11~21まで推論したものを評価する
 
 --------------------------------------------------------------
 

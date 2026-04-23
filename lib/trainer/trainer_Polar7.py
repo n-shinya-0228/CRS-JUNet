@@ -121,7 +121,7 @@ def apply_polarmix(in_vol, proj_mask, proj_labels):
 
 
 class Trainer():
-    def __init__(self, ARCH, DATA, datadir, logdir, logger, pretrained=None, use_mps=True):
+    def __init__(self, ARCH, DATA, datadir, logdir, logger, pretrained=None, use_mps=True, resume=None):
         self.ARCH = ARCH
         self.DATA = DATA
         self.datadir = datadir
@@ -129,6 +129,7 @@ class Trainer():
         self.logger = logger
         self.pretrained = pretrained
         self.use_mps = use_mps
+        self.resume = resume
         self.scaler = torch.amp.GradScaler('cuda')
         # シード
         torch.manual_seed(0)
@@ -287,35 +288,46 @@ class Trainer():
 
         # (optional) resume
         self.start_epoch = 0
-        if self.pretrained is not None:
+        if self.resume is not None:
             try:
                 try:
-                    torch.serialization.add_safe_globals(
-                        [torch.optim.lr_scheduler.CyclicLR])
+                    torch.serialization.add_safe_globals([torch.optim.lr_scheduler.CyclicLR])
                 except AttributeError:
                     pass
-                w_dict = torch.load(self.pretrained, weights_only=False)
+                w_dict = torch.load(self.resume, weights_only=False)
+                
                 self.model.load_state_dict(w_dict['model'])
                 self.optimizer.load_state_dict(w_dict['optim'])
                 self.scheduler.load_state_dict(w_dict['scheduler'])
                 self.start_epoch = w_dict.get('epoch', 0) + 1
-                # EMA の再構築
+                
                 if self.use_ema:
                     self._build_ema_model()
                     if 'model_ema' in w_dict:
                         self.ema_model.load_state_dict(w_dict['model_ema'])
-                self.logger.info(
-                    f"Successfully loaded model. Resume from epoch {self.start_epoch}")
+                self.logger.info(f"✅ Successfully RESUMED training from {self.resume}. Starting at epoch {self.start_epoch}")
             except Exception as e:
-                self.logger.warning(
-                    f"Couldn't load parameters, using random weights. Error: {e}")
+                self.logger.warning(f"❌ Couldn't resume from {self.resume}. Error: {e}")
+
+        elif self.pretrained is not None:
+            try:
+                w_dict = torch.load(self.pretrained, weights_only=False)
+                state_dict = w_dict['model'] if 'model' in w_dict else w_dict
+                
+                self.model.load_state_dict(state_dict, strict=False)
+                
+                if self.use_ema:
+                    self._build_ema_model()
+                self.logger.info(f"✅ Successfully loaded PRETRAINED weights from {self.pretrained}. Starting from scratch.")
+            except Exception as e:
+                self.logger.warning(f"❌ Couldn't load pretrained parameters. Error: {e}")
 
         # Loss weights (tunable)
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  
+        self.w_boundary = 0.20  
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)

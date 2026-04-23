@@ -58,13 +58,25 @@ if __name__ == '__main__':
       default=None,
       help='Directory to get the pretrained model. If not passed, do from scratch!'
   )
+  parser.add_argument(
+      '--resume', '-r',
+      type=str,
+      required=False,
+      default=None,
+      help='Path to the checkpoint to resume training from (e.g., logs/im_100_train/latest.path)'
+  )
   FLAGS, unparsed = parser.parse_known_args()       #引数を解析
 
   # create log folder
   try:
-    if os.path.isdir(FLAGS.log):      #ログディレクトリがすでにあれば削除し、新しく作成。
-      shutil.rmtree(FLAGS.log)
-    os.makedirs(FLAGS.log)
+    if os.path.isdir(FLAGS.log):
+      if FLAGS.resume is None:  
+        shutil.rmtree(FLAGS.log)
+        os.makedirs(FLAGS.log)
+      else:
+        logger.info(f"Resuming training... Keeping existing log folder: {FLAGS.log}") # 消さずに残す
+    else:
+      os.makedirs(FLAGS.log)
   except Exception as e:
     print(e)
     print("Error creating log directory. Check permissions!")
@@ -121,5 +133,5 @@ if __name__ == '__main__':
     quit()
 
   # create trainer and start the training
-  trainer = Trainer(ARCH, DATA, FLAGS.dataset, FLAGS.log, logger, FLAGS.pretrained, ARCH['model']['use_mps'])
+  trainer = Trainer(ARCH, DATA, FLAGS.dataset, FLAGS.log, logger, FLAGS.pretrained, ARCH['model']['use_mps'], FLAGS.resume)
   trainer.train()
