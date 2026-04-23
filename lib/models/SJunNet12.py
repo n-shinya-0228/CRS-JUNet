@@ -464,29 +464,22 @@ class SJunNet12(nn.Module):
         self.final_logits = nn.Conv2d(base_ch, nclasses, 1)
 
     def forward(self, x):
-        # ★ x は全部で8ch (インデックス0〜7)
-        feat_in = x[:, :7, :, :]  # ★ 特徴量7ch
-        m = x[:, 7:8, :, :]       # ★ バイナリマスク(0 or 1)
+        feat_in = x[:, :7, :, :]  
+        m = x[:, 7:8, :, :]       
 
-        s0 = self.stem_feat(feat_in)
-        
-        # ★ 真のゲート機構（Spatial Attention）を発動
-        mask_attn = torch.sigmoid(self.stem_mask(m)) 
-        s0 = s0 * (1.0 + mask_attn * self.gate_scale)
-        
-        s0 = s0 * m
+        # mask-aware gate
+        s0 = self.stem_feat(feat_in)              # (B, C, H, W)
+        g  = torch.tanh(self.stem_mask(m))        # [-1,1]に制限
+        s0 = s0 * (1.0 + g)                       # ゲート（観測=正、欠測=抑制）  ← 改良点
 
-        B, _, H, W = x.shape
-
-        s1 = self.enc1(s0, m)
-        s2 = self.enc2(s1, m)
-        s3 = self.enc3(s2, m)
-
-        b = self.aspp(s3)
-        b = self.swa(b)
+        # encoder-decoder as before
+        B, C, H, W = x.shape
+        s1 = self.enc1(s0)  
+        s2 = self.enc2(s1)  
+        s3 = self.enc3(s2) 
+        b = self.aspp(s3) 
         b = self.bottleneck_proj(b)
         b = self.lka(b)
-
         d3 = self.up3(b, s2)
         d2 = self.up2(d3, s1)
         d1 = self.up1(d2, s0)
