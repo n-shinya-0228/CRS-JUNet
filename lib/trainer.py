@@ -4,11 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar7
 import torch
-torch.set_float32_matmul_precision('high')
-import torch._dynamo
-torch._dynamo.config.suppress_errors = True
 import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -100,26 +96,6 @@ def set_tensorboard(path):
     return SummaryWriter(path)
 
 
-def apply_polarmix(in_vol, proj_mask, proj_labels):
-    B, C, H, W = in_vol.shape
-    rand_index = torch.randperm(B).to(in_vol.device)
-    cut_w = np.random.randint(0, W)
-
-    mixed_vol = in_vol.clone()
-    mixed_vol[:, :, :, cut_w:] = in_vol[rand_index, :, :, cut_w:]
-
-    mixed_mask = proj_mask.clone()
-    if mixed_mask.dim() == 3:
-        mixed_mask[:, :, cut_w:] = proj_mask[rand_index, :, cut_w:]
-    else:
-        mixed_mask[:, :, :, cut_w:] = proj_mask[rand_index, :, :, cut_w:]
-
-    mixed_labels = proj_labels.clone()
-    mixed_labels[:, :, cut_w:] = proj_labels[rand_index, :, cut_w:]
-
-    return mixed_vol, mixed_mask, mixed_labels
-
-
 class Trainer():
     def __init__(self, ARCH, DATA, datadir, logdir, logger, pretrained=None, use_mps=True):
         self.ARCH = ARCH
@@ -129,7 +105,7 @@ class Trainer():
         self.logger = logger
         self.pretrained = pretrained
         self.use_mps = use_mps
-        self.scaler = torch.amp.GradScaler('cuda')
+
         # シード
         torch.manual_seed(0)
         torch.backends.cudnn.deterministic = True
@@ -137,40 +113,6 @@ class Trainer():
         np.random.seed(0)
 
         self.writer = set_tensorboard(osp.join(logdir, 'tfrecord'))
-        
-        # save
-        import sys
-        from datetime import datetime
-
-        os.makedirs(self.log, exist_ok=True)
-
-        yaml_path = None
-        for i, arg in enumerate(sys.argv):
-            if arg == '--arch_cfg' and i + 1 < len(sys.argv):
-                yaml_path = sys.argv[i + 1]
-                break
-
-        model_name = self.ARCH['model']['name']
-        model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar2.py' # ファイル名変更
-        dataset_py_path = osp.join('lib', 'dataset', dataset_name)
-
-        used_files_txt = osp.join(self.log, 'used_files.txt')
-        with open(used_files_txt, 'w') as f:
-            f.write("=== Training Execution Log ===\n")
-            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Command: {' '.join(sys.argv)}\n")
-            f.write("-" * 30 + "\n")
-            f.write("[Used Files]\n")
-            f.write(f"Config YAML : {yaml_path if yaml_path else 'Not specified'}\n")
-            f.write(f"Model File  : {model_py_path}\n")
-            f.write(f"Dataset File: {dataset_py_path}\n")
-            f.write("-" * 30 + "\n")
-            f.write("[Key Settings]\n")
-            f.write(f"Dataset Root: {self.datadir}\n")
-            f.write(f"Log Dir     : {self.log}\n")
-
-        self.logger.info(f"Saved execution info to {used_files_txt}")
 
         # Data
         self.parser = Parser(root=self.datadir,
@@ -185,25 +127,16 @@ class Trainer():
         for cl, freq in DATA["content"].items():
             x_cl = self.parser.to_xentropy(cl)
             content[x_cl] += freq
-            
-        prob = content / (content.sum() + 1e-6)
-        
-        self.loss_w = 1 / (prob + epsilon_w)
-        
-        self.loss_w = torch.clamp(self.loss_w, max=20.0)
-
+        self.loss_w = 1 / (content + epsilon_w)
         for x_cl, w in enumerate(self.loss_w):
             if DATA["learning_ignore"][x_cl]:
-                self.loss_w[x_cl] = 0.0
+                self.loss_w[x_cl] = 0
         self.logger.info("Loss weights from content: %s" %
                          (self.loss_w.data.cpu().numpy().tolist(),))
 
         # Model
         self.model = get_model(ARCH['model']['name'])(
-            nclasses=self.parser.get_n_classes(),
-            drop=self.ARCH["model"].get("dropout", 0.5)  
-        )
-        self.model = torch.compile(self.model, backend="inductor", mode="default")
+            nclasses=self.parser.get_n_classes())
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
                            if p.requires_grad)
@@ -245,7 +178,7 @@ class Trainer():
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         elif train_loss_type == "focal_gamma":
             self.criterion_main = FocalLoss(
-                weight=self.loss_w, gamma=1.0, ignore_index=0).to(self.device)
+                weight=self.loss_w, gamma=2.0, ignore_index=0).to(self.device)
             self.lovasz = Lovasz_softmax(ignore=0).to(self.device)
         else:
             raise Exception('Loss not defined in config file')
@@ -261,29 +194,30 @@ class Trainer():
                                      weight_decay=self.ARCH["train"]["w_decay"])
 
         # Scheduler: warmup -> const -> cosine
-        up_epochs = int(self.ARCH["train"]["wup_epochs"])
-        max_epochs = int(self.ARCH["train"]["max_epochs"])
-        down_epochs = int(self.ARCH["train"]["cos_epochs"])
-        stay_epochs = max_epochs - up_epochs - down_epochs
+        steps_per_epoch = self.parser.get_train_size()
+        up_steps = int(self.ARCH["train"]["wup_epochs"] * steps_per_epoch)
+        stay_steps = int(
+            (self.ARCH["train"]["max_epochs"] - self.ARCH["train"]["wup_epochs"] -
+             self.ARCH["train"]["cos_epochs"]) * steps_per_epoch)
+        down_steps = int(self.ARCH["train"]["cos_epochs"] * steps_per_epoch)
 
         warmup_scheduler = LambdaLR(
             optimizer=self.optimizer,
-            lr_lambda=lambda epoch: 0.1 + 0.9 * (epoch / up_epochs) 
-            if epoch < max(up_epochs, 1) else 1.0)
+            lr_lambda=lambda step: 0.1 + 0.9 * (step / up_steps)
+            if step < max(up_steps, 1) else 1.0)
 
-        const_scheduler = StepLR(
-            optimizer=self.optimizer,
-            step_size=max(stay_epochs, 1), gamma=1.0)
+        const_scheduler = StepLR(optimizer=self.optimizer,
+                                 step_size=max(stay_steps, 1), gamma=1.0)
 
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
-            T_max=max(down_epochs, 1),
+            T_max=max(down_steps, 1),
             eta_min=self.ARCH["train"]["lr"] * 0.00001)
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
             schedulers=[warmup_scheduler, const_scheduler, cosine_scheduler],
-            milestones=[up_epochs, up_epochs + stay_epochs])
+            milestones=[up_steps, stay_steps + up_steps])
 
         # (optional) resume
         self.start_epoch = 0
@@ -313,15 +247,16 @@ class Trainer():
         # Loss weights (tunable)
         self.w_aux2 = 0.30
         self.w_aux4 = 0.15
-        self.w_aux8 = 0.10
         self.w_lovasz = 0.50
-        self.w_boundary = 0.0  
+        self.w_boundary = 0.20
 
+    # EMA モデルを現在の self.model からコピーして作成
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
         for p in self.ema_model.parameters():
             p.requires_grad_(False)
 
+    # ★ 修正版: EMA 更新（float のみ EMA、その他はコピー）
     def _update_ema(self):
         if not self.use_ema or self.ema_model is None:
             return
@@ -365,26 +300,16 @@ class Trainer():
         # train & validate
         for epoch in range(self.start_epoch,
                            self.ARCH["train"]["max_epochs"]):
-            
-            # Epoch 60 に到達したら Auxiliary Loss を無効化する
-            if epoch == 60:
-                self.logger.info("*" * 80)
-                self.logger.info(f"[Epoch {epoch}] Disabling Auxiliary Losses (w_aux2, w_aux4 -> 0.0) for final fine-tuning!")
-                self.logger.info("*" * 80)
-                self.w_aux2 = 0.0
-                self.w_aux4 = 0.0
-
             acc, iou, loss, update_mean = self.train_epoch(
                 train_loader=self.parser.get_train_set(),
                 model=self.model,
                 optimizer=self.optimizer,
                 epoch=epoch,
                 evaluator=self.evaluator,
+                scheduler=self.scheduler,
                 color_fn=None,
                 report=self.ARCH["train"]["report_batch"]
             )
-
-            self.scheduler.step()
 
             self.writer.add_scalar('training/acc', acc, epoch)
             self.writer.add_scalar('training/mIoU', iou, epoch)
@@ -432,6 +357,7 @@ class Trainer():
         self.logger.info('Finished Training')
         return
 
+    # -------- boundary は proj_mask でマスク平均、Lovasz はそのまま --------
     def _mix_losses(self, outs, labels, boundary_gt, proj_mask):
         # outs is dict from JunNet / ChatNet4
         logits = outs['logits']
@@ -444,32 +370,23 @@ class Trainer():
         if 'aux4' in outs:
             loss = loss + self.w_aux4 * self.criterion_main(
                 outs['aux4'], labels)
-        if 'aux8' in outs:
-            loss = loss + self.w_aux8 * self.criterion_main(
-                outs['aux8'], labels)
 
         # Lovasz on probs (ignore=0)
         probs = torch.softmax(logits, dim=1)
         loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
-        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None: # ★ 条件を追加
+        if 'boundary' in outs and boundary_gt is not None:
             bmap = self.boundary_criterion(
                 outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
-
-             # ★ マスクの次元合わせ
-            if proj_mask.dim() == 3:
-                pmask = proj_mask.unsqueeze(1).float()
-            else:
-                pmask = proj_mask.float()
-           
+            pmask = proj_mask.unsqueeze(1).float()           # (B,1,H,W)
             loss_b = (bmap * pmask).sum() / (pmask.sum() + 1e-6)
             loss = loss + self.w_boundary * loss_b
 
         return loss
 
     def train_epoch(self, train_loader, model, optimizer, epoch,
-                    evaluator, color_fn, report=10):
+                    evaluator, scheduler, color_fn, report=10):
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
@@ -490,43 +407,23 @@ class Trainer():
             if self.gpu:
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
-            
-            if np.random.rand() < 0.5: 
-                in_vol, proj_mask, proj_labels = apply_polarmix(in_vol, proj_mask, proj_labels)
 
-            if proj_mask.dim() == 3:
-                proj_mask_exp = proj_mask.unsqueeze(1).float()
-            else:
-                proj_mask_exp = proj_mask.float()
+            # boundary target（無効画素はここで除外）
+            boundary_gt = self._compute_boundary_gt(proj_labels)
+            boundary_gt = boundary_gt * proj_mask.unsqueeze(1).float()
+            if self.gpu:
+                boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-            if self.w_boundary > 0:
-                boundary_gt = self._compute_boundary_gt(proj_labels)
-                boundary_gt = boundary_gt * proj_mask_exp
-                if self.gpu:
-                    boundary_gt = boundary_gt.cuda(non_blocking=True)
-            else:
-                boundary_gt = None
-     
-            in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
+            # forward (JunNet / ChatNet4 returns dict)
+            outs = model(in_vol)
 
-            train_labels = proj_labels.clone()
-            train_labels[train_labels == 2] = 7  # bicycle(2) を bicyclist(7) に統合
-            train_labels[train_labels == 3] = 8  # motorcycle(3) を motorcyclist(8) に統合
-        
+            # loss（boundary は proj_mask でマスク平均）
+            loss = self._mix_losses(outs, proj_labels,
+                                    boundary_gt, proj_mask)
+
             optimizer.zero_grad()
-            # autocastブロックで囲む
-            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-                outs = model(in_vol8)
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
-
-            # スケーラーを使ってバックプロパゲーション
-            self.scaler.scale(loss).backward()
-
-            self.scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-
-            self.scaler.step(optimizer)
-            self.scaler.update()
+            loss.backward()
+            optimizer.step()
 
             # EMA 更新（float tensor のみ）
             self._update_ema()
@@ -535,9 +432,6 @@ class Trainer():
             loss_val = loss.mean().item()
             with torch.no_grad():
                 preds = outs['logits'].argmax(dim=1)
-                max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
-                preds[(preds == 7) & (max_z < -0.8)] = 2  # 低い部分は bicycle 
-                preds[(preds == 8) & (max_z < -0.8)] = 3  # 低い部分は motorcycle 
                 evaluator.addBatch(preds, proj_labels)
                 accuracy = evaluator.getacc()
                 jaccard, _ = evaluator.getIoU()
@@ -563,8 +457,9 @@ class Trainer():
                         update_ratios.append(upd / max(w, 1e-10))
             update_ratios = np.array(update_ratios) if len(
                 update_ratios) else np.array([0.0])
-            update_mean = float(np.nanmean(update_ratios)) if len(update_ratios) else 0.0
-            update_std = float(np.nanstd(update_ratios)) if len(update_ratios) > 1 else 0.0
+            update_mean = float(update_ratios.mean())
+            update_std = float(
+                update_ratios.std()) if len(update_ratios) > 1 else 0.0
             update_ratio_meter.update(update_mean)
 
             if i % report == 0:
@@ -579,6 +474,8 @@ class Trainer():
                         lcur=losses.val, lavg=losses.avg,
                         acur=acc.val, aavg=acc.avg,
                         icur=iou.val, iavg=iou.avg))
+
+            scheduler.step()
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 
@@ -602,34 +499,21 @@ class Trainer():
                     in_vol = in_vol.cuda()
                     proj_mask = proj_mask.cuda()
                 if self.gpu:
-                    proj_labels = proj_labels.cuda(non_blocking=True).long()
+                    proj_labels = proj_labels.cuda(
+                        non_blocking=True).long()
 
-                if proj_mask.dim() == 3:
-                    proj_mask_exp = proj_mask.unsqueeze(1).float()
-                else:
-                    proj_mask_exp = proj_mask.float()
+                boundary_gt = self._compute_boundary_gt(proj_labels)
+                boundary_gt = boundary_gt * proj_mask.unsqueeze(1).float()
+                if self.gpu:
+                    boundary_gt = boundary_gt.cuda(non_blocking=True)
 
-                if self.w_boundary > 0:
-                    boundary_gt = self._compute_boundary_gt(proj_labels)
-                    boundary_gt = boundary_gt * proj_mask_exp
-                    if self.gpu:
-                        boundary_gt = boundary_gt.cuda(non_blocking=True)
-                else:
-                    boundary_gt = None
+                outs = eval_model(in_vol)
 
-                in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
-
-                outs = model(in_vol8)    
-
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(
+                    outs, proj_labels, boundary_gt, proj_mask)
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)
-                max_z = in_vol[:, 0, :, :] * 5.0 + 1.0
-                
-                preds[(preds == 7) & (max_z < -0.8)] = 2
-                preds[(preds == 8) & (max_z < -0.8)] = 3
-                
                 evaluator.addBatch(preds, proj_labels)
 
         acc_v = evaluator.getacc()

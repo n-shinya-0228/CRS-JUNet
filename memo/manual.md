@@ -3,7 +3,15 @@
 --------------------------------------------------------------
 - 学習
 
-  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --log logs/BEV_`
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --log logs/BEV_`
+
+- 学習の再開
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best.path --log logs/`
+
+- ほかのモデルをベースに学習
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml -p logs/a/best.path --log logs/BEV_`
 
 - グラフの確認
 

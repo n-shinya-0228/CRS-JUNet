@@ -7,7 +7,7 @@ import numpy as np
 from lib.models import get_model
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from lib.dataset.SemanticKitti1 import SemanticKitti
+from lib.dataset.SemanticKitti3 import SemanticKitti
 import torch.nn.functional as F          # 既にあれば不要
 from scipy.spatial import cKDTree        # 追加：高速 k‑d 木
 
@@ -69,67 +69,72 @@ def main():
         learning_map=DATA["learning_map"],
         learning_map_inv=DATA["learning_map_inv"],
         sensor=ARCH["dataset"]["sensor"],
-        gt=True
+        gt=False,
+        max_gap_row=0,
+        max_gap_col=0,
+        median_ksize=0
     )
 
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
     img_W = ARCH["dataset"]["sensor"]["img_prop"]["width"]
 
-    with torch.no_grad():               #勾配計算オフ
+    with torch.no_grad():
         for (
-            in_vol, _, _, unproj_labels, path_seq, path_name,             #in_vol（2D 投影入力）、unproj_n_points（元点群数）、proj_x, proj_y（3D→2D 座標配列）
-            proj_x, proj_y, _, _, _, _, _, _, unproj_n_points, _          #path_seq/path_name（出力用パス）など
+            in_vol, _, _, unproj_labels, path_seq, path_name,
+            proj_x, proj_y, proj_range, unproj_range, _, unproj_xyz, _, _, unproj_n_points, _
         ) in tqdm(test_loader):
 
             in_vol = in_vol.cuda()
-            output, _ = model(in_vol)
-            pred_2d = output.argmax(dim=1).cpu().squeeze().numpy()  # shape (H, W)
+            outputs = model(in_vol)
+            if isinstance(outputs, dict):
+                if 'out' in outputs:
+                    output = outputs['out']
+                elif 'logits' in outputs:
+                    output = outputs['logits']
+                else:
+                    output = list(outputs.values())[0]
+            elif isinstance(outputs, (tuple, list)):
+                output = outputs[0]
+            else:
+                output = outputs
 
-            # 投影インデックス計算
-            proj_x_np = proj_x[0][:unproj_n_points].cpu().numpy().astype(np.int32)     #proj_x, proj_y：各 3D 点が投影された 2D 座標リスト
+            # 1. 2D予測を取得
+            pred_2d = output.argmax(dim=1).cpu().squeeze().numpy()
+
+            # GPUテンソルをNumpy配列に変換（バッチ次元[0]を外す）
+            proj_x_np = proj_x[0][:unproj_n_points].cpu().numpy().astype(np.int32)
             proj_y_np = proj_y[0][:unproj_n_points].cpu().numpy().astype(np.int32)
-            proj_idx = proj_y_np * img_W + proj_x_np
-            pred_flat = pred_2d.flatten()
+            unproj_xyz_np = unproj_xyz[0][:unproj_n_points].cpu().numpy()
+            unproj_range_np = unproj_range[0][:unproj_n_points].cpu().numpy()
+            proj_range_np = proj_range[0].cpu().numpy()
 
-            # 出力：点群の数に対応するよう初期化
-            final_pred = np.zeros(unproj_n_points, dtype=np.uint32)
+            # 2. とりあえず全点に2Dの色を塗る（一瞬でコピー）
+            final_pred = pred_2d[proj_y_np, proj_x_np].astype(np.uint32)
 
-            # 有効長に基づいて代入
-            valid_len = min(len(proj_idx), len(pred_flat))
-            final_pred[:valid_len] = pred_flat[proj_idx[:valid_len]]        #pred_flat[proj_idx] で 2D 予測を対応する 3D 点にコピー
+            # 3. 【影のノイズ検出】
+            # 「点の本当の距離」と「2D画像のピクセルの距離」を比較する
+            pixel_depth = proj_range_np[proj_y_np, proj_x_np]
+            
+            # 本当の距離のほうが 0.5m 以上遠い点は「手前の物体に隠れた影（オクルージョン）」と判定
+            is_shadow = (unproj_range_np - pixel_depth) > 0.5
 
+            # 4. 【超高速 3D KNN】影の点だけ、周囲の「正しい3D点」から色をもらう
+            valid_mask = ~is_shadow
+            if np.any(is_shadow) and np.any(valid_mask):
+                # 正しい点（影じゃない点）だけで3D空間の検索ツリーを作る
+                tree = cKDTree(unproj_xyz_np[valid_mask])
+                # 影の点に一番近い「正しい点」を1つ（k=1）探す（マルチスレッド workers=-1 で爆速化）
+                _, idxs = tree.query(unproj_xyz_np[is_shadow], k=1, workers=-1)
+                # 正しい点の色で、影の点を上書きして修復！
+                final_pred[is_shadow] = final_pred[valid_mask][idxs]
 
-
-            # ------ KNN 補間を追加 ------
-            missing_mask = final_pred == 0                      # ❶ 先に作る
-            miss_rate = missing_mask.mean() * 100              # ❷
-            if miss_rate > 0:
-                print(f"{miss_rate:.2f}% points filled by KNN")
-
-            if np.any(missing_mask):                           # ❸
-                # KNN は 2D 投影座標で実施
-                ref_xy  = np.column_stack((proj_x_np[~missing_mask],
-                                        proj_y_np[~missing_mask]))
-                ref_lbl = final_pred[~missing_mask]
-                tree    = cKDTree(ref_xy)
-
-                qry_xy  = np.column_stack((proj_x_np[missing_mask],
-                                        proj_y_np[missing_mask]))
-                _, idxs = tree.query(qry_xy, k=3, workers=-1)
-                voted   = ref_lbl[idxs]
-                maj     = np.apply_along_axis(
-                            lambda row: np.bincount(row,
-                                                    minlength=ref_lbl.max()+1).argmax(),
-                            1, voted)
-                final_pred[missing_mask] = maj.astype(np.uint32)
-            # ------ ここまで ------
-
-    
-
-            # ラベルをSemanticKITTI形式に戻す
+            # 5. SemanticKITTIの提出用IDに戻す
             final_pred = remap_to_original_labels(final_pred, DATA["learning_map_inv"])
 
-            # Save
+            # 6. 保存
+            unproj_pred = final_pred.astype(np.int32)
+            
+            # ★ ここから追加：SemanticKITTI指定のフォルダ階層に合わせてパスを作る
             save_file = os.path.join(
                 FLAGS.save_path,
                 "sequences",
@@ -137,7 +142,7 @@ def main():
                 "predictions",
                 path_name[0]
             )
-            final_pred.tofile(save_file)
+            unproj_pred.tofile(save_file)
 
 if __name__ == '__main__':
     main()

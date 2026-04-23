@@ -6,6 +6,7 @@ from .SJunNet12 import SJunNet12
 from .SJNet import SJNet
 from .SJNet2 import SJNet2
 from .SJNetl import SJNetl
+from .SJNetl2 import SJNetl2
 
 def get_model(model):
     return eval(model)

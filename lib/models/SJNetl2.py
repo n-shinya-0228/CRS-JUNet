@@ -454,7 +454,7 @@ class PolarCSWinBlock(nn.Module):
         return x
 
 
-class SJNetl(nn.Module):
+class SJNetl2(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
