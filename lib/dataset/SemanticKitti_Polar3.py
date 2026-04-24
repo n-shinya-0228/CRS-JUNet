@@ -103,13 +103,17 @@ class SemanticKitti(Dataset):
         if self.is_train and torch.rand(1) > 0.5:
             points, remissions, labels = self.apply_copy_paste(points, remissions, labels)
 
+        labels = labels.flatten()
+
         scan = SemLaserScan(self.color_map, project=True)
         scan.set_points(points, remissions)
         scan.set_label(labels)
 
         proj_tensor = torch.from_numpy(scan.pseudo_image.transpose(2, 0, 1)).float()
         mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float()
-        labels_t = torch.from_numpy(scan.proj_sem_label).long()
+        raw_labels = scan.proj_sem_label
+        mapped_labels = self.map(raw_labels, self.learning_map)
+        labels_t = torch.from_numpy(mapped_labels).long()
 
         # ch 0: max_z 
         proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
