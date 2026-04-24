@@ -7,7 +7,7 @@
 
 - 学習の再開
   
-  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best.path --log logs/`
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best_val.path --log logs/`
 
 - ほかのモデルをベースに学習
   
@@ -36,6 +36,12 @@
 - データの削除
   
   `rm -rf SemanticKitti/sequences/*/bev`　
+
+- zipファイル化
+  
+  `cd /home/ns/CRS-JUNet/output/`
+  
+  `zip -r submission.zip sequences/`
 
 --------------------------------------------------------------
 
