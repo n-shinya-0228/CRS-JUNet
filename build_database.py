@@ -63,8 +63,10 @@ def build_copy_paste_database():
 
                 obj_mask = (clustering.labels_ == obj_id)
                 obj_points = target_pts[obj_mask]
-                obj_rem = target_rems[obj_mask]
-                obj_lbl = target_lbls[obj_mask]
+                
+                # ★ ここを修正！縦長の2次元配列 (N, 1) に変換してあげる
+                obj_rem = target_rems[obj_mask].reshape(-1, 1)
+                obj_lbl = target_lbls[obj_mask].reshape(-1, 1)
 
                 # 物体の中心を (0,0,0) に移動させておく（後で貼り付けやすくするため）
                 center = np.mean(obj_points, axis=0)
