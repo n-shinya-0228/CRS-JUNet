@@ -37,6 +37,12 @@
   
   `rm -rf SemanticKitti/sequences/*/bev`　
 
+- zipファイル化
+  
+  `cd /home/ns/CRS-JUNet/output/`
+  
+  `zip -r submission.zip sequences/`
+
 --------------------------------------------------------------
 
 

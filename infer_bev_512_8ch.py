@@ -72,43 +72,31 @@ def main():
                 
                 scan = SemLaserScan(DATA["color_map"], project=True)
                 scan.open_scan(bin_path)
-                
+                        
                 pseudo_image_np = scan.pseudo_image.transpose(2, 0, 1) 
-                proj_tensor = torch.from_numpy(pseudo_image_np).float()
-                
-                # ch 0: max_z 
+
+                proj_tensor = torch.from_numpy(pseudo_image_np).float().cuda()
+                        
                 proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
                 proj_tensor[0] = (proj_tensor[0] - 1.0) / 5.0
-        
-                # ch 1: mean_z 
                 proj_tensor[1] = torch.clamp(proj_tensor[1], -5.0, 15.0)
                 proj_tensor[1] = (proj_tensor[1] - 1.0) / 5.0
-        
-                # ch 2: max_r 
+                        
                 max_r = torch.max(proj_tensor[2])
                 if max_r > 0.0:
                     proj_tensor[2] = proj_tensor[2] / max_r
                 proj_tensor[2] = torch.clamp(proj_tensor[2], 0.0, 1.0)
-        
-                # ch 3: density
                 proj_tensor[3] = torch.clamp(proj_tensor[3], 0.0, 5.0) / 5.0
-    
-                # ch 4: z_diff
                 proj_tensor[4] = torch.clamp(proj_tensor[4], 0.0, 10.0) / 10.0
-
-                # ch 5: x_diff
                 proj_tensor[5] = torch.clamp(proj_tensor[5], 0.0, 10.0) / 10.0
-
-                # ch 6: y_diff 
                 proj_tensor[6] = torch.clamp(proj_tensor[6], 0.0, 10.0) / 10.0
 
-                mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float() # [1, 512, 512]
-                
+                mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float().cuda() # [1, 512, 512]
+                        
                 combined_tensor = torch.cat([proj_tensor, mask_t], dim=0)      # [8, 512, 512]
-
-                in_vol = combined_tensor.unsqueeze(0).cuda()                   # [1, 5, 512, 512]
-             
-                outputs = model(in_vol)
+                in_vol = combined_tensor.unsqueeze(0)                          # [1, 8, 512, 512] 
+                     
+                outputs = model(in_vol)               
                 if isinstance(outputs, dict):
                     if 'out' in outputs:
                         main_out = outputs['out']
@@ -122,38 +110,38 @@ def main():
                     main_out = outputs[0]
                 else:
                     main_out = outputs
-                
+                        
                 pred_2d = main_out.argmax(dim=1).cpu().squeeze().numpy()  # shape (512, 512)    
                 unproj_n_points = scan.points.shape[0]
                 final_pred = np.zeros(unproj_n_points, dtype=np.uint32)
-                
+                        
                 proj_x = scan.proj_x.flatten().astype(np.int32)
                 proj_y = scan.proj_y.flatten().astype(np.int32)
-                
+                        
                 scan_x = scan.points[:, 0]
                 scan_y = scan.points[:, 1]
-                
+                        
                 rho = np.sqrt(scan_x**2 + scan_y**2)
                 valid_mask = (rho > 0.0) & (rho < 51.2) 
 
                 final_pred[valid_mask] = pred_2d[proj_y[valid_mask], proj_x[valid_mask]]
 
-                missing_mask = final_pred == 0
+                missing_mask = (final_pred == 0) & valid_mask
+                        
                 if np.any(missing_mask):
-                    ref_xy = scan.points[~missing_mask, :2] 
-                    ref_lbl = final_pred[~missing_mask]
+                    ref_mask = (final_pred != 0) & valid_mask
+                    ref_xy = scan.points[ref_mask, :2] 
+                    ref_lbl = final_pred[ref_mask]
                     
                     if len(ref_lbl) > 0: 
                         tree = cKDTree(ref_xy)
                         qry_xy = scan.points[missing_mask, :2]
-                        
-                        dists, idxs = tree.query(qry_xy, k=1, distance_upper_bound=3.0, workers=-1)
-                        
+                        dists, idxs = tree.query(qry_xy, k=1, distance_upper_bound=1.0, workers=-1)
+                                
                         valid_knn = dists != np.inf
-
                         missing_indices = np.where(missing_mask)[0]
                         valid_missing_indices = missing_indices[valid_knn]
-                        
+                                
                         final_pred[valid_missing_indices] = ref_lbl[idxs[valid_knn]]
 
                 final_pred = remap_to_original_labels(final_pred, DATA["learning_map_inv"])

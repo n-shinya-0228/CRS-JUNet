@@ -139,48 +139,57 @@ class LaserScan:
         gy = self.proj_y[mask]
         
         grid_indices = gy * W + gx
-        unique_indices, inverse_indices, counts = np.unique(grid_indices, return_inverse=True, return_counts=True)
-        u_y = unique_indices // W
-        u_x = unique_indices % W
-
+        
         z_f = scan_z[mask]
         r_f = remissions[mask]
         pts_f = self.points[mask]
-        
         x_f = scan_x[mask]
         y_f = scan_y[mask]
 
-        for i, idx in enumerate(unique_indices):
-            cell_mask = (inverse_indices == i)
-            
-            cell_z = z_f[cell_mask]
-            cell_r = r_f[cell_mask]
-            
-            cell_x = x_f[cell_mask]
-            cell_y = y_f[cell_mask]
-            
-            max_z = np.max(cell_z)
-            min_z = np.min(cell_z)
-            
-            pseudo_image[u_y[i], u_x[i], 0] = max_z
-            pseudo_image[u_y[i], u_x[i], 1] = np.mean(cell_z)
-            pseudo_image[u_y[i], u_x[i], 2] = np.max(cell_r)
-            pseudo_image[u_y[i], u_x[i], 3] = counts[i] / 100.0
-            pseudo_image[u_y[i], u_x[i], 4] = max_z - min_z
-            
-            # 6番目と7番目のチャネル：X方向とY方向の広がり（厚み）
-            pseudo_image[u_y[i], u_x[i], 5] = np.max(cell_x) - np.min(cell_x)
-            pseudo_image[u_y[i], u_x[i], 6] = np.max(cell_y) - np.min(cell_y)
+        sort_idx = np.lexsort((z_f, grid_indices))
+        
+        sorted_grid = grid_indices[sort_idx]
+        sorted_z = z_f[sort_idx]
+        sorted_r = r_f[sort_idx]
+        sorted_x = x_f[sort_idx]
+        sorted_y = y_f[sort_idx]
+        sorted_pts = pts_f[sort_idx]
+        sorted_valid_idx = valid_indices[sort_idx]
+        
+        _, unique_indices, counts = np.unique(sorted_grid, return_index=True, return_counts=True)
+        
+        u_grid = sorted_grid[unique_indices]
+        u_y = u_grid // W
+        u_x = u_grid % W
+        
+        split_z = np.split(sorted_z, unique_indices[1:])
+        split_x = np.split(sorted_x, unique_indices[1:])
+        split_y = np.split(sorted_y, unique_indices[1:])
+ 
+        max_z = np.array([arr[-1] for arr in split_z])
+        min_z = np.array([arr[0] for arr in split_z])  
+        mean_z = np.array([np.mean(arr) for arr in split_z])
+        max_r = np.array([np.max(arr) for arr in np.split(sorted_r, unique_indices[1:])])
+        diff_x = np.array([np.max(arr) - np.min(arr) for arr in split_x])
+        diff_y = np.array([np.max(arr) - np.min(arr) for arr in split_y])
+        
+        # BEVの代表点（一番高い点 ＝ グループの最後尾）のインデックスを取得
+        max_idx_in_sort = unique_indices + counts - 1
 
-            # BEVにおいては「そのピクセルの中で一番高い位置にある点」を代表点として扱う
-            max_idx_in_cell = np.argmax(cell_z)
-            orig_idx = valid_indices[cell_mask][max_idx_in_cell]
 
-            self.proj_range[u_y[i], u_x[i]] = np.max(cell_z)
-            self.proj_xyz[u_y[i], u_x[i]] = pts_f[cell_mask][max_idx_in_cell]
-            self.proj_remission[u_y[i], u_x[i]] = cell_r[max_idx_in_cell]
-            self.proj_idx[u_y[i], u_x[i]] = orig_idx
-            self.proj_mask[u_y[i], u_x[i]] = 1
+        pseudo_image[u_y, u_x, 0] = max_z
+        pseudo_image[u_y, u_x, 1] = mean_z
+        pseudo_image[u_y, u_x, 2] = max_r
+        pseudo_image[u_y, u_x, 3] = counts / 100.0
+        pseudo_image[u_y, u_x, 4] = max_z - min_z
+        pseudo_image[u_y, u_x, 5] = diff_x
+        pseudo_image[u_y, u_x, 6] = diff_y
+
+        self.proj_range[u_y, u_x] = max_z
+        self.proj_xyz[u_y, u_x] = sorted_pts[max_idx_in_sort]
+        self.proj_remission[u_y, u_x] = sorted_r[max_idx_in_sort]
+        self.proj_idx[u_y, u_x] = sorted_valid_idx[max_idx_in_sort]
+        self.proj_mask[u_y, u_x] = 1
 
         self.pseudo_image = pseudo_image
         self.proj_H = H
