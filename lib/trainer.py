@@ -153,7 +153,7 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar2.py' # ファイル名変更
+        dataset_name = 'SemanticKitti_Polar3.py' # ファイル名変更
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         used_files_txt = osp.join(self.log, 'used_files.txt')

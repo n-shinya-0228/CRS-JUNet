@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # JunNet13 (Light) : Shifted Window Attention (Swin-like) + Cached Mask + Reduced Cost
-# in:  (B, 6, H, W)  = [range, x, y, z, remission, obs_mask
-# Cartesian
+# in:  (B, 6, H, W)  = [range, x, y, z, remission, obs_mask]
+# out: dict {'logits','aux2','aux4','boundary'}
+# polar
 
 import torch
 import torch.nn as nn
@@ -10,13 +11,64 @@ from typing import Tuple
 
 
 def conv_bn_act(in_ch, out_ch, k=3, s=1, p=1, groups=1, act=True, d=1):
-    layers = [
-        nn.Conv2d(in_ch, out_ch, k, s, p, dilation=d, groups=groups, bias=False),
-        nn.InstanceNorm2d(out_ch, affine=True),
-    ]
-    if act:
-        layers.append(nn.ReLU(inplace=True))
-    return nn.Sequential(*layers)
+    if k == 1:
+        layers = [
+            RingConv2d(in_ch, out_ch, kernel_size=1, stride=s, dilation=d, groups=groups, bias=False),
+            nn.InstanceNorm2d(out_ch, affine=True)
+        ]
+        if act:
+            layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
+
+    # 3x3 Ring Convolution
+    conv3x3 = RingConv2d(in_ch, out_ch, kernel_size=k, stride=s, dilation=d, groups=groups, bias=False)
+    
+    # 1x3 Ring Convolution
+    conv1x3 = RingConv2d(in_ch, out_ch, kernel_size=(1, k), stride=s, dilation=d, groups=groups, bias=False)
+    
+    # 3x1 Convolution
+    conv3x1 = RingConv2d(in_ch, out_ch, kernel_size=(k, 1), stride=s, dilation=d, groups=groups, bias=False)
+
+    class PolarConv(nn.Module):
+        def __init__(self, c3x3, c1x3, c3x1):
+            super().__init__()
+            self.c3x3 = c3x3
+            self.c1x3 = c1x3
+            self.c3x1 = c3x1
+            self.bn = nn.InstanceNorm2d(out_ch, affine=True)
+            self.act = nn.ReLU(inplace=True) if act else nn.Identity()
+
+        def forward(self, x):
+            out = self.c3x3(x) + self.c1x3(x) + self.c3x1(x)
+            out = self.bn(out)
+            return self.act(out)
+
+    return PolarConv(conv3x3, conv1x3, conv3x1)
+
+class RingConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1, groups=1, bias=False):
+        super().__init__()
+        if isinstance(kernel_size, int):
+            kernel_size = (kernel_size, kernel_size)
+        if isinstance(dilation, int):
+            dilation = (dilation, dilation)
+
+        self.pad_h = ((kernel_size[0] - 1) * dilation[0]) // 2
+        self.pad_w = ((kernel_size[1] - 1) * dilation[1]) // 2
+
+        self.conv = nn.Conv2d(
+            in_channels, out_channels, kernel_size, 
+            stride=stride, padding=0, dilation=dilation, 
+            groups=groups, bias=bias
+        )
+
+    def forward(self, x):
+        if self.pad_w > 0:
+            x = F.pad(x, (self.pad_w, self.pad_w, 0, 0), mode='circular')
+        if self.pad_h > 0:
+            x = F.pad(x, (0, 0, self.pad_h, self.pad_h), mode='constant', value=0)
+            
+        return self.conv(x)
 
 
 class SE(nn.Module):
@@ -38,12 +90,14 @@ class BasicBlock(nn.Module):
         self.bn1 = nn.InstanceNorm2d(in_ch, affine=True)
         self.act = nn.ReLU(inplace=True)
 
-        self.conv1 = nn.Conv2d(in_ch, out_ch, 3, stride, 1, bias=False)
+        self.conv1 = RingConv2d(in_ch, out_ch, kernel_size=3, stride=stride, bias=False)
+
         self.bn2 = nn.InstanceNorm2d(out_ch, affine=True)
 
         self.drop = nn.Dropout2d(drop) if drop > 0 else nn.Identity()
 
-        self.conv2 = nn.Conv2d(out_ch, out_ch, 3, 1, 1, bias=False)
+        self.conv2 = RingConv2d(out_ch, out_ch, kernel_size=3, stride=1, bias=False)
+        
         self.se = SE(out_ch) if use_se else nn.Identity()
 
         self.down = None
@@ -68,9 +122,7 @@ class BasicBlock(nn.Module):
         x = x + idt
         x = self.act(x)
 
-        # ★ 追加: マスクが与えられた場合、点がない場所の特徴量をゼロにリセット
         if mask is not None:
-            # テンソルのサイズが違う場合（プーリング後など）は、マスクも縮小する
             if x.shape[-2:] != mask.shape[-2:]:
                 mask = F.interpolate(mask, size=x.shape[-2:], mode='nearest')
             x = x * mask
@@ -90,7 +142,7 @@ class ResStage(nn.Module):
 
     def forward(self, x, mask=None):
         for block in self.net:
-            x = block(x, mask) # ★ 各ブロックにマスクを渡す
+            x = block(x, mask) 
         return x
 
 
@@ -120,8 +172,7 @@ class ASPP(nn.Module):
                 self.branches.append(conv_bn_act(in_ch, out_ch, k=3, s=1, p=r, d=r))
 
         self.image_pool = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            # ★ conv_bn_act を使わず、直接 Conv2d と ReLU を書く（InstanceNormを回避）
+            nn.AdaptiveMaxPool2d((1, 1)),  
             nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
         )
@@ -171,6 +222,48 @@ class UpBlock(nn.Module):
         x = self.conv2(x)
         return x
 
+class UpBlock2(nn.Module):
+    def __init__(self, in_ch, skip_ch, out_ch, drop=0.0, swa_heads: int = 4, window_r=(8, 4), window_a=(4, 8)):
+        super().__init__()
+        self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        self.gate = AttnGate(skip_ch, in_ch, inter_ch=min(skip_ch, in_ch) // 2)
+        concat_ch = in_ch + skip_ch
+        self.swa_ch = out_ch 
+        self.reduce_conv = conv_bn_act(concat_ch, self.swa_ch, k=1, s=1, p=0)
+        
+        self.swa = nn.Sequential(
+            PolarCSWinBlock(
+                self.swa_ch, 
+                window_r=window_r, window_a=window_a, 
+                heads=swa_heads, 
+                shift_r=(0, 0), shift_a=(0, 0)
+            ),
+            PolarCSWinBlock(
+                self.swa_ch, 
+                window_r=window_r, window_a=window_a, 
+                heads=swa_heads, 
+                shift_r=(window_r[0]//2, window_r[1]//2), 
+                shift_a=(window_a[0]//2, window_a[1]//2)
+            ),
+        )
+        
+        self.conv1 = conv_bn_act(self.swa_ch, out_ch, 3, 1, 1)
+        self.drop = nn.Dropout2d(drop) if drop > 0 else nn.Identity()
+        self.conv2 = conv_bn_act(out_ch, out_ch, 3, 1, 1)
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        if x.shape[-2:] != skip.shape[-2:]:
+            x = F.interpolate(x, size=skip.shape[-2:], mode="bilinear", align_corners=False)
+        skip = self.gate(skip, x)
+        
+        x = torch.cat([x, skip], dim=1) 
+        x = self.reduce_conv(x)        
+        x = self.swa(x)                 
+        x = self.conv1(x)               
+        x = self.drop(x)
+        x = self.conv2(x)
+        return x
 
 # ---- Shifted Window Attention (Swin-like, minimal) ----
 class RelPosBias(nn.Module):
@@ -256,26 +349,55 @@ def window_reverse(x, window: Tuple[int, int], H, W, B):
     x = x.view(B, H, W, C)
     return x
 
+class DropPath(nn.Module):
+    def __init__(self, drop_prob: float = 0., scale_by_keep: bool = True):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+        self.scale_by_keep = scale_by_keep
 
-class ShiftedSWABlock(nn.Module):
-    def __init__(self, ch, window: Tuple[int, int] = (8, 8), heads=4, shift: Tuple[int, int] = (0, 0)):
+    def forward(self, x):
+        if self.drop_prob == 0. or not self.training:
+            return x
+        keep_prob = 1 - self.drop_prob
+        # バッチごとにランダムにON/OFFを決める
+        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+        random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
+        if keep_prob > 0.0 and self.scale_by_keep:
+            random_tensor.div_(keep_prob)
+        return x * random_tensor
+
+class PolarCSWinBlock(nn.Module):
+    """
+    Cross-Shaped Window Attention (CSWin) for Polar BEV
+    """
+    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4, shift_r=(0, 0), shift_a=(0, 0), drop_path=0.0):
         super().__init__()
-        self.window = window
-        self.shift = shift
+        assert ch % 2 == 0, "Channel must be divisible by 2 for CSWin"
+        self.ch_half = ch // 2
+        self.heads_half = max(1, heads // 2)
+
+        self.window_r = window_r 
+        self.window_a = window_a  
+        self.shift_r = shift_r
+        self.shift_a = shift_a
+
         self.norm1 = nn.LayerNorm(ch)
-        self.attn = WindowAttention(ch, heads=heads, window=window)
+
+        self.attn_r = WindowAttention(self.ch_half, heads=self.heads_half, window=window_r)
+        self.attn_a = WindowAttention(self.ch_half, heads=self.heads_half, window=window_a)
+
         self.norm2 = nn.LayerNorm(ch)
         self.mlp = nn.Sequential(nn.Linear(ch, 4 * ch), nn.GELU(), nn.Linear(4 * ch, ch))
 
-        # mask cache: key=(Hp,Wp,device_type,dtype) -> (nW,1,N,N)
-        self._attn_mask_cache = {}
+        self._attn_mask_cache_r = {}
+        self._attn_mask_cache_a = {}
+
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
 
     @torch.no_grad()
-    def _build_attn_mask(self, Hp: int, Wp: int, device, dtype):
-        """Return (nW,1,N,N) mask for a single image (batch展開はしない)."""
-        Wh, Ww = self.window
-        Sh, Sw = self.shift
-
+    def _build_attn_mask(self, Hp: int, Wp: int, window: Tuple[int, int], shift: Tuple[int, int], device, dtype):
+        Wh, Ww = window
+        Sh, Sw = shift
         img_mask = torch.zeros((1, Hp, Wp, 1), device=device)
         cnt = 0
         h_slices = (slice(0, -Wh), slice(-Wh, -Sh), slice(-Sh, None))
@@ -285,92 +407,40 @@ class ShiftedSWABlock(nn.Module):
                 img_mask[:, hs, ws, :] = cnt
                 cnt += 1
 
-        mask_windows = window_partition(img_mask, self.window).squeeze(-1)  # (nW, N)
+        mask_windows = window_partition(img_mask, window).squeeze(-1)  # (nW, N)
         attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)  # (nW, N, N)
         attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, 0.0)
         attn_mask = attn_mask.unsqueeze(1).to(dtype=dtype)  # (nW,1,N,N)
         return attn_mask
 
-    def forward(self, x):  # (B,C,H,W)
-        B, C, H, W = x.shape
-        Wh, Ww = self.window
-        Sh, Sw = self.shift
+    def _process_branch(self, x, window, shift, attn_module, cache_dict):
+        # x: (B, Hp, Wp, C_half)
+        B, Hp, Wp, C = x.shape
+        Wh, Ww = window
+        Sh, Sw = shift
 
-        pad_h = (Wh - H % Wh) % Wh
-        pad_w = (Ww - W % Ww) % Ww
-        x = F.pad(x, (0, pad_w, 0, pad_h))
-        Hp, Wp = H + pad_h, W + pad_w
-
-        x = x.permute(0, 2, 3, 1).contiguous()  # (B,Hp,Wp,C)
-
-        # shift
         if Sh != 0 or Sw != 0:
             x = torch.roll(x, shifts=(-Sh, -Sw), dims=(1, 2))
 
         attn_mask = None
         if Sh != 0 or Sw != 0:
             key = (Hp, Wp, x.device.type, x.dtype)
-            cached = self._attn_mask_cache.get(key, None)
+            cached = cache_dict.get(key, None)
             if cached is None or cached.device != x.device or cached.dtype != x.dtype:
-                cached = self._build_attn_mask(Hp, Wp, device=x.device, dtype=x.dtype)
-                self._attn_mask_cache[key] = cached
-
-            # (nW,1,N,N) -> (nW*B,1,N,N)
+                cached = self._build_attn_mask(Hp, Wp, window, shift, device=x.device, dtype=x.dtype)
+                cache_dict[key] = cached
             attn_mask = cached.repeat_interleave(B, dim=0)
 
-        # window partition
-        xw = window_partition(x, self.window)  # (nW*B, N, C)
-        if attn_mask is not None:
-            assert attn_mask.shape[0] == xw.shape[0], (attn_mask.shape, xw.shape)
+        xw = window_partition(x, window)
 
-        h = self.norm1(xw)
-        h = self.attn(h, attn_mask=attn_mask)
+        h = attn_module(xw, attn_mask=attn_mask)
         xw = xw + h
 
-        h = self.norm2(xw)
-        h = self.mlp(h)
-        xw = xw + h
+        x = window_reverse(xw, window, Hp, Wp, B)
 
-        # reverse
-        x = window_reverse(xw, self.window, Hp, Wp, B)
-
-        # reverse shift
         if Sh != 0 or Sw != 0:
             x = torch.roll(x, shifts=(Sh, Sw), dims=(1, 2))
-
-        x = x[:, :H, :W, :].contiguous()
-        x = x.permute(0, 3, 1, 2).contiguous()
-        return x
-
-class CartesianCSWinBlock(nn.Module):
-    """
-    Cross-Shaped Window Attention (CSWin) for Cartesian BEV
-    直交座標系用の十字窓アテンション（円環シフトなし）。
-    """
-    def __init__(self, ch, window_r=(16, 4), window_a=(4, 16), heads=4):
-        super().__init__()
-        assert ch % 2 == 0, "Channel must be divisible by 2 for CSWin"
-        self.ch_half = ch // 2
-        self.heads_half = max(1, heads // 2)
-
-        self.window_r = window_r  # 縦長窓
-        self.window_a = window_a  # 横長窓
-
-        self.norm1 = nn.LayerNorm(ch)
-
-        # 半分ずつ処理する独立したWindow Attention (シフトなし)
-        self.attn_r = WindowAttention(self.ch_half, heads=self.heads_half, window=window_r)
-        self.attn_a = WindowAttention(self.ch_half, heads=self.heads_half, window=window_a)
-
-        self.norm2 = nn.LayerNorm(ch)
-        self.mlp = nn.Sequential(nn.Linear(ch, 4 * ch), nn.GELU(), nn.Linear(4 * ch, ch))
-
-    def _process_branch(self, x, window, attn_module):
-        B, Hp, Wp, C = x.shape
-        xw = window_partition(x, window)
-        h = attn_module(xw, attn_mask=None) # Cartesianでシフトしない場合はマスク不要
-        xw = xw + h
-        x = window_reverse(xw, window, Hp, Wp, B)
+            
         return x
 
     def forward(self, x):
@@ -383,7 +453,7 @@ class CartesianCSWinBlock(nn.Module):
         x = F.pad(x, (0, pad_w, 0, pad_h))
         Hp, Wp = H + pad_h, W + pad_w
 
-        x = x.permute(0, 2, 3, 1).contiguous()
+        x = x.permute(0, 2, 3, 1).contiguous()  # (B, Hp, Wp, C)
         idt = x
 
         x = self.norm1(x)
@@ -391,73 +461,100 @@ class CartesianCSWinBlock(nn.Module):
         x_r = x[..., :self.ch_half]
         x_a = x[..., self.ch_half:]
 
-        out_r = self._process_branch(x_r, self.window_r, self.attn_r)
-        out_a = self._process_branch(x_a, self.window_a, self.attn_a)
+        out_r = self._process_branch(x_r, self.window_r, self.shift_r, self.attn_r, self._attn_mask_cache_r)
+        out_a = self._process_branch(x_a, self.window_a, self.shift_a, self.attn_a, self._attn_mask_cache_a)
 
-        x = torch.cat([out_r, out_a], dim=-1)
+        attn_out = torch.cat([out_r, out_a], dim=-1)
         
-        x = idt + x
-        x = x + self.mlp(self.norm2(x))
+        x = idt + self.drop_path(attn_out)
+        
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
 
         x = x[:, :H, :W, :].contiguous()
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
-class SJunNet12(nn.Module):
+class SJNet3(nn.Module):
     """
-    Cartesian BEV 専用最強モデル。
-    通常のCNN ＋ 十字窓アテンション(CSWin) 搭載。
+    Lighter defaults:
+      - aspp_out: 384 -> 256
+      - swa_blocks: 4 -> 2 fixed (non-shift + shift)
+      - swa_heads: 8 -> 4
+      - swa_window: (8,16) -> (8,8)
     """
     def __init__(
         self,
-        in_channels: int = 7,     # ★ 5 から 7 に変更
+        in_channels: int = 7,     
         nclasses: int = 20,
-        drop: float = 0.3,
-        base_ch: int = 48,
+        drop: float = 0.5,
+        base_ch: int = 32,
         aspp_out: int = 256,
         swa_heads: int = 4,
-        swa_window: Tuple[int, int] = (16, 16),
+        swa_window: Tuple[int, int] = (8, 8),
         return_aux: bool = True,
     ):
         super().__init__()
         self.return_aux = return_aux
 
-        assert aspp_out % swa_heads == 0
+        assert aspp_out % swa_heads == 0, f"aspp_out({aspp_out}) must be divisible by swa_heads({swa_heads})"
 
-        # 直交座標系の通常の CNN
-        self.stem_feat = conv_bn_act(7, base_ch, 3, 1, 1)  # ★ ここを 7 にする
+        self.stem_feat = conv_bn_act(7, base_ch, 3, 1, 1)  
         self.stem_mask = nn.Sequential(
             conv_bn_act(1, base_ch // 2, 1, 1, 0),
             conv_bn_act(base_ch // 2, base_ch, 3, 1, 1),
             nn.Conv2d(base_ch, base_ch, 1),
         )
-        self.gate_scale = nn.Parameter(torch.tensor(1.0))  # ★ 真のゲート機構用のスケールを追加
+        self.gate_scale = nn.Parameter(torch.tensor(1.0))  # learnable
 
+        # encoder
         self.enc1 = ResStage(base_ch, base_ch * 2, num_blocks=2, pool=True, drop=drop)
         self.enc2 = ResStage(base_ch * 2, base_ch * 4, num_blocks=2, pool=True, drop=drop)
         self.enc3 = ResStage(base_ch * 4, base_ch * 8, num_blocks=2, pool=True, drop=drop)
+        self.enc4 = ResStage(base_ch * 8, base_ch * 8, num_blocks=2, pool=True, drop=drop)
 
+        # bottleneck
         self.aspp = ASPP(base_ch * 8, aspp_out)
 
+        # ---- lighter SWA: 2 blocks fixed (non-shift + shift) ----
+        Wh, Ww = swa_window
+
+        win_r = (Wh , Ww // 2)
+        win_a = (Wh // 2, Ww )
+
+        # Polar CSWin
         self.swa = nn.Sequential(
-            CartesianCSWinBlock(aspp_out, window_r=(16, 4), window_a=(4, 16), heads=swa_heads),
-            CartesianCSWinBlock(aspp_out, window_r=(16, 4), window_a=(4, 16), heads=swa_heads),
+            PolarCSWinBlock(
+                aspp_out, 
+                window_r=win_r, window_a=win_a,  
+                heads=swa_heads, 
+                shift_r=(0, 0), shift_a=(0, 0)
+            ),
+            PolarCSWinBlock(
+                aspp_out, 
+                window_r=win_r, window_a=win_a,
+                heads=swa_heads, 
+                shift_r=(win_r[0]//2, win_r[1]//2), 
+                shift_a=(win_a[0]//2, win_a[1]//2)
+            ),
         )
 
         self.bottleneck_proj = conv_bn_act(aspp_out, base_ch * 8, 1, 1, 0)
         self.lka = LKA(base_ch * 8, k=7, d=3)
 
-        self.up3 = UpBlock(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop)
-        self.up2 = UpBlock(base_ch * 4, base_ch * 2, base_ch * 2, drop=drop)
+        # decoder
+        self.up4 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(8, 4), window_a=(4, 8))
+        self.up3 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(16, 4), window_a=(4, 16))
+        self.up2 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(16, 8), window_a=(8, 16))
         self.up1 = UpBlock(base_ch * 2, base_ch, base_ch, drop=drop)
 
+        # heads
+        self.aux8_head = nn.Conv2d(base_ch * 8, nclasses, 1)
         self.aux4_head = nn.Conv2d(base_ch * 4, nclasses, 1)
         self.aux2_head = nn.Conv2d(base_ch * 2, nclasses, 1)
 
         self.fuse = conv_bn_act(base_ch, base_ch, 3, 1, 1)
-        
-        self.strip_h = nn.Sequential(nn.AdaptiveAvgPool2d((None, 1)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
-        self.strip_w = nn.Sequential(nn.AdaptiveAvgPool2d((1, None)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
+        self.strip_h = nn.Sequential(nn.AdaptiveMaxPool2d((None, 1)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
+        self.strip_w = nn.Sequential(nn.AdaptiveMaxPool2d((1, None)), conv_bn_act(base_ch, base_ch, 1, 1, 0))
         self.strip_fuse = conv_bn_act(base_ch * 3, base_ch, 1, 1, 0)
 
         self.boundary_head = nn.Conv2d(base_ch, 1, 1)
@@ -476,14 +573,17 @@ class SJunNet12(nn.Module):
         B, C, H, W = x.shape
         s1 = self.enc1(s0)  
         s2 = self.enc2(s1)  
-        s3 = self.enc3(s2) 
-        b = self.aspp(s3) 
+        s3 = self.enc3(s2)
+        s4 = self.enc4(s3)  
+        b = self.aspp(s4) 
         b = self.bottleneck_proj(b)
         b = self.lka(b)
-        d3 = self.up3(b, s2)
+        d4 = self.up4(b, s3)
+        d3 = self.up3(d4, s2)
         d2 = self.up2(d3, s1)
         d1 = self.up1(d2, s0)
 
+        aux8 = F.interpolate(self.aux8_head(s4), size=(H, W), mode="bilinear", align_corners=False)
         aux4 = F.interpolate(self.aux4_head(d3), size=(H, W), mode="bilinear", align_corners=False)
         aux2 = F.interpolate(self.aux2_head(d2), size=(H, W), mode="bilinear", align_corners=False)
 
@@ -494,4 +594,4 @@ class SJunNet12(nn.Module):
 
         boundary = F.interpolate(self.boundary_head(feat), size=(H, W), mode="bilinear", align_corners=False)
         logits = self.final_logits(feat)
-        return {"logits": logits, "aux2": aux2, "aux4": aux4, "boundary": boundary}
+        return {"logits": logits, "aux2": aux2, "aux4": aux4, "aux8": aux8, "boundary": boundary}
