@@ -543,8 +543,8 @@ class SJNet3(nn.Module):
 
         # decoder
         self.up4 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(8, 4), window_a=(4, 8))
-        self.up3 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(16, 4), window_a=(4, 16))
-        self.up2 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(16, 8), window_a=(8, 16))
+        self.up3 = UpBlock2(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop, swa_heads=swa_heads, window_r=(16, 4), window_a=(4, 16))
+        self.up2 = UpBlock2(base_ch * 4, base_ch * 2, base_ch * 2, drop=drop, swa_heads=swa_heads, window_r=(16, 8), window_a=(8, 16))
         self.up1 = UpBlock(base_ch * 2, base_ch, base_ch, drop=drop)
 
         # heads

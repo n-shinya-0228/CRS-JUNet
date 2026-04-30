@@ -5,6 +5,7 @@ from .SJunNet11 import SJunNet11
 from .SJunNet12 import SJunNet12
 from .SJNet import SJNet
 from .SJNet2 import SJNet2
+from .SJNet3 import SJNet3
 from .SJNetl import SJNetl
 from .SJNetl2 import SJNetl2
 
