@@ -467,7 +467,7 @@ class SJNetl2(nn.Module):
         in_channels: int = 7,     
         nclasses: int = 20,
         drop: float = 0.5,
-        base_ch: int = 32,
+        base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
         swa_window: Tuple[int, int] = (16, 16),

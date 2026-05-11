@@ -474,7 +474,7 @@ class PolarCSWinBlock(nn.Module):
         x = x.permute(0, 3, 1, 2).contiguous()
         return x
 
-class SJNet3(nn.Module):
+class SJNet4(nn.Module):
     """
     Lighter defaults:
       - aspp_out: 384 -> 256
@@ -487,7 +487,7 @@ class SJNet3(nn.Module):
         in_channels: int = 7,     
         nclasses: int = 20,
         drop: float = 0.5,
-        base_ch: int = 48,
+        base_ch: int = 32,
         aspp_out: int = 256,
         swa_heads: int = 4,
         swa_window: Tuple[int, int] = (8, 8),
@@ -542,10 +542,10 @@ class SJNet3(nn.Module):
         self.lka = LKA(base_ch * 8, k=7, d=3)
 
         # decoder
-        self.up4 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(8, 2), window_a=(2, 8))
-        self.up3 = UpBlock2(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop, swa_heads=swa_heads, window_r=(8, 4), window_a=(4, 8))
+        self.up4 = UpBlock2(base_ch * 8, base_ch * 8, base_ch * 8, drop=drop, swa_heads=swa_heads, window_r=(8, 4), window_a=(4, 8))
+        self.up3 = UpBlock2(base_ch * 8, base_ch * 4, base_ch * 4, drop=drop, swa_heads=swa_heads, window_r=(16, 4), window_a=(4, 16))
         self.up2 = UpBlock2(base_ch * 4, base_ch * 2, base_ch * 2, drop=drop, swa_heads=swa_heads, window_r=(32, 8), window_a=(8, 32))
-        self.up1 = UpBlock(base_ch * 2, base_ch, base_ch, drop=drop)
+        self.up1 = UpBlock2(base_ch * 2, base_ch, base_ch, drop=drop, swa_heads=swa_heads, window_r=(32, 16), window_a=(8, 16))
 
         # heads
         self.aux8_head = nn.Conv2d(base_ch * 8, nclasses, 1)

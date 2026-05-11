@@ -446,36 +446,32 @@ class Trainer():
 
     def _mix_losses(self, outs, labels, boundary_gt, proj_mask):
         # outs is dict from JunNet / ChatNet4
-        logits = outs['logits']
+        logits = outs['logits'].float() 
         loss = self.criterion_main(logits, labels)
 
-        # aux
+        # aux 
         if 'aux2' in outs:
-            loss = loss + self.w_aux2 * self.criterion_main(
-                outs['aux2'], labels)
+            loss = loss + self.w_aux2 * self.criterion_main(outs['aux2'].float(), labels)
         if 'aux4' in outs:
-            loss = loss + self.w_aux4 * self.criterion_main(
-                outs['aux4'], labels)
+            loss = loss + self.w_aux4 * self.criterion_main(outs['aux4'].float(), labels)
         if 'aux8' in outs:
-            loss = loss + self.w_aux8 * self.criterion_main(
-                outs['aux8'], labels)
+            loss = loss + self.w_aux8 * self.criterion_main(outs['aux8'].float(), labels)
 
         # Lovasz on probs (ignore=0)
         probs = torch.softmax(logits, dim=1)
         loss = loss + self.w_lovasz * self.lovasz(probs, labels)
 
         # boundary: proj_mask で有効画素のみ平均
-        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None: # ★ 条件を追加
-            bmap = self.boundary_criterion(
-                outs['boundary'], boundary_gt)  # (B,1,H,W), reduction='none'
+        if self.w_boundary > 0 and 'boundary' in outs and boundary_gt is not None:
+            # boundary も float32 に
+            bmap = self.boundary_criterion(outs['boundary'].float(), boundary_gt)  
 
-             # ★ マスクの次元合わせ
             if proj_mask.dim() == 3:
                 pmask = proj_mask.unsqueeze(1).float()
             else:
                 pmask = proj_mask.float()
-           
-            loss_b = (bmap * pmask).sum() / (pmask.sum() + 1e-6)
+            
+            loss_b = (bmap * pmask).sum() / (pmask.sum() + 1e-6) 
             loss = loss + self.w_boundary * loss_b
 
         return loss
