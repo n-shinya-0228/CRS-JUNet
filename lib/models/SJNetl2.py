@@ -551,6 +551,7 @@ class SJNetl2(nn.Module):
         s3 = self.enc3(s2)
         s4 = self.enc4(s3)  
         b = self.aspp(s4) 
+        b = self.swa(b)
         b = self.bottleneck_proj(b)
         b = self.lka(b)
         d4 = self.up4(b, s3)
