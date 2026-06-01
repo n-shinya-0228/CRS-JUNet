@@ -4,7 +4,7 @@
 # - combines CE/Focal + Lovasz (optional) + Boundary BCE + Aux losses
 # - keeps scheduler/optimizer structure + EMA model for better mIoU
 
-#trainer_Polar8
+#trainer_Polar9
 import torch
 torch.set_float32_matmul_precision('high')
 import torch._dynamo
