@@ -99,8 +99,7 @@ class SobelFilter(nn.Module):
 def set_tensorboard(path):
     return SummaryWriter(path)
 
-
-def apply_polarmix(in_vol, proj_mask, proj_labels):
+def apply_polarmix(in_vol, proj_mask, proj_labels, paste_mask):
     B, C, H, W = in_vol.shape
     rand_index = torch.randperm(B).to(in_vol.device)
     cut_w = np.random.randint(0, W)
@@ -117,8 +116,13 @@ def apply_polarmix(in_vol, proj_mask, proj_labels):
     mixed_labels = proj_labels.clone()
     mixed_labels[:, :, cut_w:] = proj_labels[rand_index, :, cut_w:]
 
-    return mixed_vol, mixed_mask, mixed_labels
+    mixed_paste = paste_mask.clone()
+    if mixed_paste.dim() == 3:
+        mixed_paste[:, :, cut_w:] = paste_mask[rand_index, :, cut_w:]
+    else:
+        mixed_paste[:, :, :, cut_w:] = paste_mask[rand_index, :, :, cut_w:]
 
+    return mixed_vol, mixed_mask, mixed_labels, mixed_paste
 
 class Trainer():
     def __init__(self, ARCH, DATA, datadir, logdir, logger, pretrained=None, use_mps=True, resume=None):
@@ -153,7 +157,8 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar3.py' # ファイル名変更
+        dataset_name = 'SemanticKitti_Polar5.py' # ファイル名変更
+        trainer_name = 'trainer_Polar9.py'  # このファイル名
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         used_files_txt = osp.join(self.log, 'used_files.txt')
@@ -166,6 +171,7 @@ class Trainer():
             f.write(f"Config YAML : {yaml_path if yaml_path else 'Not specified'}\n")
             f.write(f"Model File  : {model_py_path}\n")
             f.write(f"Dataset File: {dataset_py_path}\n")
+            f.write(f"Trainer File : {trainer_name}\n")
             f.write("-" * 30 + "\n")
             f.write("[Key Settings]\n")
             f.write(f"Dataset Root: {self.datadir}\n")
@@ -327,7 +333,8 @@ class Trainer():
         self.w_aux4 = 0.15
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
-        self.w_boundary = 0.20  
+        self.w_boundary = 0.20
+        self.w_paste = float(self.ARCH["train"].get("w_paste", 0.5))  
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
@@ -361,6 +368,23 @@ class Trainer():
         boundary_mag = self.sobel(proj_labels_float)
         boundary_bin = (boundary_mag > 0.1).float()
         return boundary_bin
+
+    def _focal_loss_map(self, logits, labels):
+        # logits: (B,C,H,W), labels: (B,H,W)
+        logp = F.log_softmax(logits.float(), dim=1)
+        logpt = logp.gather(1, labels.unsqueeze(1)).squeeze(1)
+        pt = logpt.exp()
+
+        loss = -((1.0 - pt) ** 1.0) * logpt  # gamma=1.0
+
+        if self.loss_w is not None:
+            class_w = self.loss_w.to(logits.device)
+            loss = loss * class_w[labels]
+
+        valid = labels != 0
+        loss = loss * valid.float()
+
+        return loss
 
     def train(self):
         best_train_iou = 0.0
@@ -455,7 +479,7 @@ class Trainer():
         self.logger.info('Finished Training')
         return
 
-    def _mix_losses(self, outs, labels, boundary_gt, proj_mask):
+    def _mix_losses(self, outs, labels, boundary_gt, proj_mask,paste_mask=None):
         # outs is dict from JunNet / ChatNet4
         logits = outs['logits'].float() 
         loss = self.criterion_main(logits, labels)
@@ -485,6 +509,30 @@ class Trainer():
             loss_b = (bmap * pmask).sum() / (pmask.sum() + 1e-6) 
             loss = loss + self.w_boundary * loss_b
 
+        # paste-region weighted loss
+        if paste_mask is not None and self.w_paste > 0:
+            logits = outs['logits'].float()
+            paste_mask = paste_mask.float()
+
+            if paste_mask.dim() == 4:
+                paste_mask_2d = paste_mask.squeeze(1)
+            else:
+                paste_mask_2d = paste_mask
+
+            if proj_mask.dim() == 4:
+                valid_mask = proj_mask.squeeze(1).float()
+            else:
+                valid_mask = proj_mask.float()
+
+            loss_map = self._focal_loss_map(logits, labels)
+
+            paste_weight = paste_mask_2d * valid_mask
+            paste_sum = paste_weight.sum()
+
+            if paste_sum > 0:
+                loss_paste = (loss_map * paste_weight).sum() / (paste_sum + 1e-6)
+                loss = loss + self.w_paste * loss_paste
+
         return loss
 
     def train_epoch(self, train_loader, model, optimizer, epoch,
@@ -501,7 +549,7 @@ class Trainer():
         evaluator.reset()
 
         for i, (in_vol, proj_mask, proj_labels, _, path_seq, path_name,
-                _, _, proj_range, _, _, _, _, _, _, edge) in enumerate(train_loader):
+                _, _, proj_range, _, _, _, _, _, paste_mask, edge) in enumerate(train_loader):
             data_time.update(time.time() - end)
             if not self.multi_gpu and self.gpu:
                 in_vol = in_vol.cuda()
@@ -509,9 +557,10 @@ class Trainer():
             if self.gpu:
                 proj_labels = proj_labels.cuda(
                     non_blocking=True).long()
+                paste_mask = paste_mask.cuda(non_blocking=True).float()
             
             if np.random.rand() < 0.5: 
-                in_vol, proj_mask, proj_labels = apply_polarmix(in_vol, proj_mask, proj_labels)
+                in_vol, proj_mask, proj_labels, paste_mask = apply_polarmix(in_vol, proj_mask, proj_labels, paste_mask)
 
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
@@ -528,15 +577,11 @@ class Trainer():
      
             in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-            train_labels = proj_labels.clone()
-            train_labels[train_labels == 2] = 7  # bicycle(2) を bicyclist(7) に統合
-            train_labels[train_labels == 3] = 8  # motorcycle(3) を motorcyclist(8) に統合
-        
             optimizer.zero_grad()
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 outs = model(in_vol8)
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask,paste_mask=paste_mask)
 
             # スケーラーを使ってバックプロパゲーション
             self.scaler.scale(loss).backward()
@@ -598,6 +643,7 @@ class Trainer():
                         lcur=losses.val, lavg=losses.avg,
                         acur=acc.val, aavg=acc.avg,
                         icur=iou.val, iavg=iou.avg))
+                self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 
@@ -616,7 +662,7 @@ class Trainer():
         with torch.no_grad():
             end = time.time()
             for i, (in_vol, proj_mask, proj_labels, _, path_seq, path_name,
-                    _, _, proj_range, _, _, _, _, _, _, edge) in enumerate(val_loader):
+                    _, _, proj_range, _, _, _, _, _, paste_mask, edge) in enumerate(val_loader):
                 if not self.multi_gpu and self.gpu:
                     in_vol = in_vol.cuda()
                     proj_mask = proj_mask.cuda()
@@ -638,9 +684,9 @@ class Trainer():
 
                 in_vol8 = torch.cat([in_vol, proj_mask_exp], dim=1)
 
-                outs = model(in_vol8)    
+                outs = eval_model(in_vol8)    
 
-                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask)
+                loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask,paste_mask=None)
                 losses.update(loss.item(), in_vol.size(0))
 
                 preds = outs['logits'].argmax(dim=1)

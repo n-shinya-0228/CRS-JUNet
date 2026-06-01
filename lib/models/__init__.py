@@ -9,6 +9,7 @@ from .SJNet3 import SJNet3
 from .SJNet4 import SJNet4
 from .SJNetl import SJNetl
 from .SJNetl2 import SJNetl2
+from .SJNetl3 import SJNetl3
 
 def get_model(model):
     return eval(model)

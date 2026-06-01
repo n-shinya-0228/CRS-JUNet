@@ -1,74 +1,229 @@
-解決策1：2.5Dアプローチ（Z軸でスライスする）
-BEV画像を「1枚の画像（Z軸全体を圧縮）」にするのではなく、**「高さごとに輪切りにした複数枚の画像」**にする手法です。
+Step 0: 現在のbaselineを固定
+Step 1: Paste-region weighted loss
+Step 2: Context-aware Copy-Paste
+Step 3: Occlusion-aware Copy-Paste
+Step 4: Temporal-consistent Copy-Paste
+Step 5: Visibility-aware Loss / Feature Learning
+Step 6: Temporal Consistency Loss
+
+学会で強調すべき新規性は、個々の部品そのものではなく、次の1点に集約するのが一番強いです。
+
+BEVセマンティックセグメンテーションにおいて、貼り付け物体を「どこに・どれくらい見える状態で・時間的にどう動くか」まで制御する Spatio-temporal Visibility-aware Copy-Paste を提案した。
+
+つまり、単なるCopy-Pasteではなく、
+
+Context-aware
++ Occlusion-aware
++ Temporal Consistency
++ Visibility-aware Learning
+
+を一つの学習フレームワークとして統合した点を押し出すのが良いです。
+
+既存研究としては、LiDARセマンティックセグメンテーション向けのCopy-Paste / Mix系拡張はすでにあり、たとえばPolarMixは物体レベル・シーンレベルのmixを円筒座標系で行うデータ拡張として提案されています。 また、LiDARセグメンテーションではCutMix、Copy-Paste、Mix3D、PolarMixのような拡張が使われてきたことも整理されています。
+なので、「Copy-Pasteを使った」だけでは新規性は弱いです。
+
+強調すべき新規性 1：ランダム貼り付けから「意味的に自然な貼り付け」へ
+
+Step 2 の Context-aware Copy-Paste は、発表でかなり強調できます。
+
+従来のCopy-Pasteは、物体をランダムに配置するため、
+
+車が歩道に置かれる
+人が不自然な場所に置かれる
+自転車がシーン文脈と合わない位置に置かれる
+
+という問題があります。
+
+あなたの提案では、
+
+car → road / parking
+pedestrian → sidewalk / road edge
+bicycle → road edge / sidewalk / parking
+
+のように、クラスごとに貼り付け可能な文脈を制御する。
+
+ここは、
+
+Scene-context-aware object insertion
+
+として主張できます。
+
+強調すべき新規性 2：完全に見える物体ではなく「遮蔽された難しい物体」を生成する
+
+Step 3 の Occlusion-aware Copy-Paste も重要です。
+
+普通のCopy-Pasteでは、貼り付けた物体がきれいに見えすぎます。
+しかし実際のLiDARでは、少数クラスほど、
+
+遠距離
+点が少ない
+他物体に隠れる
+一部しか見えない
+
+という状況が多いです。
+
+そこで、貼り付け物体に対して可視率を制御し、
+
+fully visible
+partially occluded
+heavily occluded
+
+のような難易度を作る。
+
+これは、
+
+Visibility-controlled hard sample generation
+
+として押し出すと良いです。
+
+単なる「遮蔽を入れました」ではなく、
+
+少数クラスの難例を意図的に生成する
+
+という主張にすると強いです。
+
+強調すべき新規性 3：時系列入力に対して、貼り付け物体も時間的に一貫させる
+
+ここが一番新規性として強く見せやすいです。
+
+あなたの実装では、過去フレームをpose補正して現在座標系へ統合しています。
+つまり、モデルは単一フレームではなく、時系列情報を含む入力を使っています。
+
+ここで通常のCopy-Pasteをすると、
+
+現在フレームだけに突然物体が出現する
+過去フレームとの整合性がない
+動きが不自然
+
+という問題が起こります。
+
+そこで、
+
+t-2 → t-1 → t
+
+で同じ物体が自然に移動するように貼り付ける。
+
+これは、
+
+Temporally consistent Copy-Paste for multi-frame BEV segmentation
+
+としてかなり強いです。
+
+特に、Copy-Paste拡張を時系列BEVセマンティックセグメンテーション用に拡張した、という主張ができます。
+
+強調すべき新規性 4：貼り付け領域をlossでも明示的に学習する
+
+Step 1 の Paste-region weighted loss は、実装は地味ですが、研究としては説明しやすいです。
+
+普通のCopy-Pasteでは、貼った後は通常画素と同じ扱いになります。
+
+あなたは paste_mask を作り、
+
+貼り付け領域
+遮蔽領域
+通常領域
+
+を区別してlossを変える。
+
+これは、
+
+Paste-aware supervision
+
+として主張できます。
+
+特に少数クラス改善を狙うなら、
+
+rare class paste region のlossを強める
+
+という設計にすると、Long-tail対策としてかなり自然です。
+
+強調すべき新規性 5：Visibility-aware Feature Learning
+
+Step 5 は、モデル側の新規性として使えます。
+
+あなたのモデルは proj_mask を入力に加えており、mask-aware gateのような構造も持っています。
+ここを発展させて、
+
+可視領域
+部分遮蔽領域
+欠測領域
+
+に応じて特徴やlossの重みを変える。
+
+これは、
+
+Visibility-aware feature modulation
+
+または
+
+Visibility-guided BEV feature learning
+
+として主張できます。
+
+ただし、ここは既存のmask-aware処理と似て見られる可能性があるので、copy-pasteで生成したvisibility情報と連動している点を強調するとよいです。
+
+Step 6：Temporal Consistency Loss は「補助的な新規性」として強い
+
+Temporal Consistency Loss は、最終的に入れられるならかなり良いです。
+
+ただし、これ単体は既存研究でもよくある考え方です。
+なので新規性としては、
+
+Temporal Consistency Lossそのもの
+
+ではなく、
+
+Temporal-consistent Copy-Pasteで生成した拡張サンプルに対して、非貼り付け領域の予測一貫性を保つ正則化を導入した
+
+と主張する方が強いです。
+
+つまり、
+
+Copy-Pasteあり入力
+Copy-Pasteなし入力
+
+を両方モデルに入れて、
+
+元から存在する領域では予測が変わらない
+貼り付け領域では新しい物体を正しく学習する
+
+という形です。
+
+これは、
+
+Augmentation-consistent temporal regularization
+
+のように表現できます。
+
+学会発表での一番強い主張
+
+最終的には、こう言うのが一番良いです。
+
+従来のLiDAR Copy-Paste拡張は、物体を増やすことには有効だが、貼り付け位置のシーン文脈、遮蔽による可視性、時系列入力との整合性を十分に考慮していない。
+本研究では、BEVセマンティックセグメンテーションに対して、Context-aware、Occlusion-aware、Temporal-consistentなCopy-Pasteを統合し、さらにPaste-region / Visibility-awareな学習を行うことで、少数クラスと遮蔽状況に対する認識性能を改善する。
+
+この主張が最もまとまりが良いです。
+
+新規性としての優先順位
+
+発表で強く押す順番はこれがおすすめです。
+
+優先度	要素	新規性の強さ
+1	Temporal-consistent Copy-Paste	一番強い
+2	Context + Occlusion-aware Paste	強い
+3	Paste-region weighted loss	実装しやすく効果を説明しやすい
+4	Visibility-aware Feature Learning	モデル側の補強として良い
+5	Temporal Consistency Loss	単体ではなく統合要素として強い
+論文タイトルにするなら
+
 例えば、
 
-0m 〜 1m のBEV画像（自転車のタイヤなどが映る）
+Visibility-aware Spatio-temporal Copy-Paste for Long-tail BEV Semantic Segmentation
 
-1m 〜 2m のBEV画像（人間の胴体が映る）
-このように入力を分離することで、重なりを回避しつつ、2DのCNNやTransformerで学習させることができます。
+または、
 
-解決策2：3D Voxel / Sparse Convolution（BEVをやめる）
-BEVの限界を悟り、空間を小さな立方体（ボクセル）に分割して、3Dのまま畳み込み計算を行う手法（Cylindrical3DやSPVNASなど）です。計算コストはBEVより跳ね上がりますが、SemanticKITTIのような縦の分離が要求されるタスクでは最強の精度を出します。
+Context-aware Temporal Copy-Paste Augmentation for LiDAR BEV Semantic Segmentation
 
-解決策3：ヒューリスティック結合・分離（今のあなたに一番おすすめ！）
-BEVのまま戦うための、最も賢くコスパの良い「ハック（裏技）」です。
-モデルの構造は一切変えず、データセットのラベルの方を一時的に改造します。
+が自然です。
 
-学習前（準備）：
-工場スクリプト（.pt.gz を作る時）で、bicycle と bicyclist が同じマスに存在したら、それらをまとめて 「自転車に乗っている人（クラスA）」 という1つの新しいクラスに統合してしまいます。
-
-学習（train.py）：
-AIは「あ、これは自転車に乗っている人の塊だな」と、BEV特有の塊として学習します。（これなら矛盾が起きません）。
-
-推論後（後処理）：
-AIが「自転車に乗っている人（クラスA）」と予測したピクセルを取り出します。
-そのピクセルの中にある元の3D点群の**Z座標（高さ）**を見て、「Zが1.0mより下なら bicycle、1.0mより上なら bicyclist に強制的に分割する」というプログラム（ルールベース）を最後に書きます。
-
-
-公式評価サーバーへの提出：4つのステップ
-ステップ1：テストデータ（Seq 11〜21）の推論（Inference）
-まずは、あなたのPC上で、完成した SJNet を使って Sequence 11 から 21 までの点群データを推論します。
-この時、普段の train.py のようにIoUを計算するのではなく（正解がないので計算できません）、AIが出した答え（0〜19のクラス番号）を、各スキャンごとに .label という拡張子のバイナリファイル として保存するスクリプト（例：test.py や infer.py）を作成して実行します。
-
-【⚠️超重要：.labelファイルのデータ形式】
-SemanticKITTIの公式ルールとして、保存する .label ファイルは必ず 「32ビット符号なし整数（uint32）」 でなければなりません。
-下位16ビットに「意味的クラス（Semantic Class）」、上位16ビットに「インスタンスID（今回は使わないので0）」を格納します。
-
-Python
-# 保存時のコードイメージ（NumPyの場合）
-predicted_labels = preds.cpu().numpy().astype(np.uint32)
-predicted_labels.tofile('000000.label')
-ステップ2：指定されたフォルダ構造でZip化する
-数万枚の .label ファイルが出力されたら、それを1文字も間違えずに以下のフォルダ構造に整理し、Zip形式で圧縮します。
-
-Plaintext
-submission.zip  (名前は任意でOK)
- └── sequences/
-      ├── 11/
-      │   └── predictions/
-      │         ├── 000000.label
-      │         ├── 000001.label
-      │         └── ...
-      ├── 12/
-      │   └── predictions/
-      │         ├── 000000.label
-      │         └── ...
-      ...
-      └── 21/
-          └── predictions/
-                ├── 000000.label
-                └── ...
-※ フォルダ名が predictions ではなく prediction になっていたり、階層が1つズレているだけで、サーバー側で読み込みエラーになり弾かれます。
-
-ステップ3：CodaLab / Codabench にアップロード
-SemanticKITTIの公式サイト（またはCodabenchのプロジェクトページ）に行き、アカウントを作成します。
-
-「Participate（参加）」や「Submit（提出）」のタブから、先ほど作った submission.zip をアップロードします。
-
-サーバー側であなたの解答用紙と、サーバーの奥底に隠された真の正解データ（Ground Truth）が自動的に照合され、IoUが計算されます。
-
-ステップ4：結果の確認とリーダーボード掲載
-アップロード後、混雑状況にもよりますが数十分〜数時間で計算が完了します。
-結果が出ると、motorcyclist を含む全19クラスの公式の mIoU が表示されます。このスコアに納得がいけば、あなたのチーム名（またはSJNetなどのモデル名）と共に、公式のリーダーボード（ランキング表）に公開することができます！
-
-datasetを増やす
+一番大事なのは、**「Copy-Pasteをした」ではなく、「BEV時系列セグメンテーションに合わせて、貼り付けを意味・可視性・時間の3軸で制御した」**と主張することです。
