@@ -157,7 +157,7 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar5.py' # ファイル名変更
+        dataset_name = 'SemanticKitti_Polar4.py' # ファイル名変更
         trainer_name = 'trainer_Polar9.py'  # このファイル名
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
@@ -622,12 +622,16 @@ class Trainer():
                 lr = self.optimizer.param_groups[0]["lr"]
                 self.logger.info(
                     'Lr: {lr:.3e} | '
+                    'Data {dcur:.3f} ({davg:.3f}) | '
+                    'Batch {bcur:.3f} ({bavg:.3f}) | '
                     'Epoch: [{ep}][{it}/{tot}] | '
                     'Loss {lcur:.4f} ({lavg:.4f}) | '
                     'acc {acur:.3f} ({aavg:.3f}) | '
                     'IoU {icur:.3f} ({iavg:.3f})'
                     .format(
                         lr=lr,
+                        dcur=data_time.val, davg=data_time.avg,
+                        bcur=batch_time.val, bavg=batch_time.avg,
                         ep=epoch, it=i, tot=len(train_loader),
                         lcur=losses.val, lavg=losses.avg,
                         acur=acc.val, aavg=acc.avg,
