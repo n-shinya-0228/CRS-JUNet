@@ -210,7 +210,7 @@ class Trainer():
             nclasses=self.parser.get_n_classes(),
             drop=self.ARCH["model"].get("dropout", 0.5)  
         )
-        self.model = torch.compile(self.model, backend="inductor", mode="default")
+        # self.model = torch.compile(self.model, backend="inductor", mode="default")
         weights_total = sum(p.numel() for p in self.model.parameters())
         weights_grad = sum(p.numel() for p in self.model.parameters()
                            if p.requires_grad)
@@ -581,11 +581,6 @@ class Trainer():
             # autocastブロックで囲む
             with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 outs = model(in_vol8)
-                if i == 0:
-                   self.logger.info(f"in_vol shape: {in_vol.shape}")
-                   self.logger.info(f"proj_mask shape: {proj_mask.shape}")
-                   self.logger.info(f"proj_labels shape: {proj_labels.shape}")
-                   self.logger.info(f"paste_mask shape: {paste_mask.shape}")
                 loss = self._mix_losses(outs, proj_labels, boundary_gt, proj_mask,paste_mask=paste_mask)
 
             # スケーラーを使ってバックプロパゲーション
@@ -620,35 +615,53 @@ class Trainer():
             end = time.time()
 
             # update ratio stats
-            update_ratios = []
-            for g in self.optimizer.param_groups:
-                lr = g["lr"]
-                for value in g["params"]:
-                    if value.grad is not None:
-                        w = np.linalg.norm(
-                            value.data.detach().cpu().numpy().reshape((-1)))
-                        upd = np.linalg.norm(
-                            (-max(lr, 1e-10) * value.grad).detach().cpu().numpy().reshape((-1)))
-                        update_ratios.append(upd / max(w, 1e-10))
-            update_ratios = np.array(update_ratios) if len(
-                update_ratios) else np.array([0.0])
-            update_mean = float(np.nanmean(update_ratios)) if len(update_ratios) else 0.0
-            update_std = float(np.nanstd(update_ratios)) if len(update_ratios) > 1 else 0.0
-            update_ratio_meter.update(update_mean)
+            update_mean = 0.0
+            update_std = 0.0
 
             if i % report == 0:
                 lr = self.optimizer.param_groups[0]["lr"]
                 self.logger.info(
-                    'Lr: {lr:.3e} | Update: {umean:.3e} mean,{ustd:.3e} std | '
-                    'Epoch: [{ep}][{it}/{tot}] | Loss {lcur:.4f} ({lavg:.4f}) | '
-                    'acc {acur:.3f} ({aavg:.3f}) | IoU {icur:.3f} ({iavg:.3f})'
+                    'Lr: {lr:.3e} | '
+                    'Epoch: [{ep}][{it}/{tot}] | '
+                    'Loss {lcur:.4f} ({lavg:.4f}) | '
+                    'acc {acur:.3f} ({aavg:.3f}) | '
+                    'IoU {icur:.3f} ({iavg:.3f})'
                     .format(
-                        lr=lr, umean=update_mean, ustd=update_std,
+                        lr=lr,
                         ep=epoch, it=i, tot=len(train_loader),
                         lcur=losses.val, lavg=losses.avg,
                         acur=acc.val, aavg=acc.avg,
-                        icur=iou.val, iavg=iou.avg))
-                self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
+                        icur=iou.val, iavg=iou.avg
+                    )
+                )
+
+            # if i % report == 0:
+            #     update_ratios = []
+            #     for g in optimizer.param_groups:
+            #         lr = g["lr"]
+            #         for value in g["params"]:
+            #             if value.grad is not None:
+            #                 w = value.data.norm().item()
+            #                 upd = (max(lr, 1e-10) * value.grad).norm().item()
+            #                 update_ratios.append(upd / max(w, 1e-10))
+
+            # update_ratios = np.array(update_ratios) if len(update_ratios) else np.array([0.0])
+            # update_mean = float(np.nanmean(update_ratios)) if len(update_ratios) else 0.0
+            # update_std = float(np.nanstd(update_ratios)) if len(update_ratios) > 1 else 0.0
+            update_ratio_meter.update(update_mean)
+
+            # if i % report == 0:
+            #     lr = self.optimizer.param_groups[0]["lr"]
+            #     self.logger.info(
+            #         'Lr: {lr:.3e} | Update: {umean:.3e} mean,{ustd:.3e} std | '
+            #         'Epoch: [{ep}][{it}/{tot}] | Loss {lcur:.4f} ({lavg:.4f}) | '
+            #         'acc {acur:.3f} ({aavg:.3f}) | IoU {icur:.3f} ({iavg:.3f})'
+            #         .format(
+            #             lr=lr, umean=update_mean, ustd=update_std,
+            #             ep=epoch, it=i, tot=len(train_loader),
+            #             lcur=losses.val, lavg=losses.avg,
+            #             acur=acc.val, aavg=acc.avg,
+            #             icur=iou.val, iavg=iou.avg))
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 

@@ -53,6 +53,8 @@ class SemanticKitti(Dataset):
         self.learning_map_inv = learning_map_inv
         self.gt = gt
         self.is_train = is_train
+        self.use_multiframe_cache = True
+        self.num_past_frames = 2
         
         self.database_files = glob.glob("copy_paste_database/*.npy")
 
@@ -134,8 +136,20 @@ class SemanticKitti(Dataset):
         bin_file = self.scan_files[index]
         label_file = bin_file.replace("velodyne", "labels").replace(".bin", ".label")
 
-        points, remissions = load_bin(bin_file)
-        labels = load_label(label_file)
+        cache_file = bin_file.replace(
+            "velodyne",
+            f"multiframe_{self.num_past_frames}past"
+            ).replace(".bin", ".npz")
+        
+        if self.use_multiframe_cache and os.path.exists(cache_file):
+            data = np.load(cache_file)
+            points = data["points"].astype(np.float32)
+            remissions = data["remissions"].astype(np.float32)
+            labels = data["labels"].astype(np.int32)
+        else:
+            points, remissions = load_bin(bin_file)
+            labels = load_label(label_file)
+
         paste_flags = np.zeros((points.shape[0], 1), dtype=np.float32)
 
         # 現在のポーズ行列を取得

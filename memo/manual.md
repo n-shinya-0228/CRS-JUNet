@@ -33,6 +33,8 @@
 
   `uv run python prepare_bev2.py --dataset SemanticKitti/ --data_cfg config/labels/semantic-kitti.yaml`
 
+  `uv run python prepare_multiframe_cache.py \ --dataset SemanticKitti/ \ --data_cfg config/labels/semantic-kitti.yaml \ --num_past_frames 2`
+
 - データの削除
   
   `rm -rf SemanticKitti/sequences/*/bev`　
