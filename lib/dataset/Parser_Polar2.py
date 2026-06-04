@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from .SemanticKitti_Polar5 import SemanticKitti
+from .SemanticKitti_Polar4 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
@@ -66,6 +66,20 @@ class Parser:
         self.valid_sequences = data_cfg["split"]["valid"]
         self.test_sequences  = data_cfg["split"]["test"]
 
+        loader_kwargs = dict(
+            batch_size=self.batch_size,
+            num_workers=self.workers,
+            pin_memory=True,
+            collate_fn=bev_collate_fn,
+        )
+
+        if self.workers > 0:
+            loader_kwargs.update(
+            persistent_workers=True,
+            prefetch_factor=4
+            )
+
+
         # ============================================================
         # 1. Train Dataset & Loader
         # ============================================================
@@ -77,10 +91,8 @@ class Parser:
         )
 
         self.trainloader = DataLoader(
-            self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle_train,
-            num_workers=self.workers, pin_memory=True, drop_last=True,
-            collate_fn=bev_collate_fn # ★ 専用の結合関数を使う
-        )
+            self.train_dataset,shuffle=self.shuffle_train,drop_last=True,**loader_kwargs
+            )
 
         # ============================================================
         # 2. Valid Dataset & Loader
@@ -93,14 +105,25 @@ class Parser:
         )
 
         self.validloader = DataLoader(
-            self.valid_dataset, batch_size=self.batch_size, shuffle=False,
-            num_workers=self.workers, pin_memory=True, drop_last=False,
-            collate_fn=bev_collate_fn
-        )
+            self.valid_dataset,shuffle=False,drop_last=False,**loader_kwargs
+            )
 
         # ============================================================
         # 3. Test Dataset & Loader
         # ============================================================
+        test_loader_kwargs = dict(
+            batch_size=1,
+            num_workers=self.workers,
+            pin_memory=True,
+            collate_fn=bev_collate_fn,
+        )
+
+        if self.workers > 0:
+            test_loader_kwargs.update(
+            persistent_workers=True,
+            prefetch_factor=4
+            )
+
         if self.test_sequences:
             self.test_dataset = SemanticKitti(
                 root=self.root, sequences=self.test_sequences, labels=self.labels,
@@ -109,10 +132,8 @@ class Parser:
                 gt=False, is_train=False
             )
             self.testloader = DataLoader(
-                self.test_dataset, batch_size=1, shuffle=False,
-                num_workers=self.workers, pin_memory=True, drop_last=False,
-                collate_fn=bev_collate_fn
-            )
+                self.test_dataset,shuffle=False,drop_last=False,**test_loader_kwargs
+                )
         else:
             self.testloader = None
 

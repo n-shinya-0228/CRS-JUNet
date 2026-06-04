@@ -91,6 +91,16 @@ def build_multiframe_cache_for_sequence(dataset_root, seq, num_past_frames=2):
             past_points, past_rems = load_bin(past_bin_path)
             past_labels = load_label(past_label_path)
 
+            past_keep_ratio = 0.3
+            if past_keep_ratio < 1.0:
+                n_past = past_points.shape[0]
+                keep_n = int(n_past * past_keep_ratio)
+                keep_idx = np.random.choice(n_past, keep_n, replace=False)
+
+                past_points = past_points[keep_idx]
+                past_rems = past_rems[keep_idx]
+                past_labels = past_labels[keep_idx]
+
             past_pose = poses[past_idx]
             transform = cur_pose_inv @ past_pose
 
@@ -108,7 +118,7 @@ def build_multiframe_cache_for_sequence(dataset_root, seq, num_past_frames=2):
         remissions_cat = np.concatenate(all_rems, axis=0).astype(np.float32)
         labels_cat = np.concatenate(all_labels, axis=0).astype(np.int32)
 
-        np.savez_compressed(
+        np.savez(
             save_path,
             points=points_cat,
             remissions=remissions_cat,

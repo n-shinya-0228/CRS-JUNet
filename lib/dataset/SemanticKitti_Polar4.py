@@ -1,42 +1,9 @@
 import os
 import torch
 import numpy as np
-import glob
 import random
+import gzip
 from torch.utils.data import Dataset
-from lib.utils.laserscan_Polar3 import SemLaserScan
-
-EXTENSIONS_SCAN = ['.bin']
-EXTENSIONS_EDGE = ['.png']
-EXTENSIONS_LABEL = ['.label']
-
-def is_scan(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_SCAN)
-
-def is_edge(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_EDGE)
-
-def is_label(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_LABEL)
-
-def load_bin(bin_path):
-    scan = np.fromfile(bin_path, dtype=np.float32).reshape((-1, 4))
-    return scan[:, 0:3], scan[:, 3:4]  # points(N,3), remissions(N,1)
-
-def load_label(label_path):
-    label = np.fromfile(label_path, dtype=np.int32).reshape((-1, 1))
-    return label
-
-def load_poses(pose_file):
-    # Nx12の配列をNx4x4の変換行列リストに変換する
-    poses = []
-    with open(pose_file, 'r') as f:
-        for line in f:
-            T = np.fromstring(line, dtype=np.float32, sep=' ')
-            T = T.reshape(3, 4)
-            T = np.vstack((T, [0, 0, 0, 1])) # 4x4にする
-            poses.append(T)
-    return poses
 
 class SemanticKitti(Dataset):
 
@@ -53,146 +20,153 @@ class SemanticKitti(Dataset):
         self.learning_map_inv = learning_map_inv
         self.gt = gt
         self.is_train = is_train
-        
-        self.database_files = glob.glob("copy_paste_database/*.npy")
 
         self.scan_files = []
-        self.poses = [] # ★ 追加：ポーズ行列を保存するリスト
-
         for seq in self.sequences:
-            velodyne_path = os.path.join(self.root, seq, "velodyne")
-            pose_file = os.path.join(self.root, seq, "poses.txt") # ★ 追加
-
-            if os.path.exists(velodyne_path):
-                scans = [os.path.join(velodyne_path, f) for f in sorted(os.listdir(velodyne_path)) if f.endswith(".bin")]
+            bev_path = os.path.join(self.root, seq, "polar_512_prlb")
+            if os.path.exists(bev_path):
+                scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
-                
-                # ★ 追加：対応するシーケンスの poses.txt を読み込む
-                if os.path.exists(pose_file):
-                    seq_poses = load_poses(pose_file)
-                    self.poses += seq_poses
-                else:
-                    # テストデータ等でposeがない場合のダミー（単位行列）
-                    self.poses += [np.eye(4, dtype=np.float32) for _ in scans]
 
         if skip:
             self.scan_files = self.scan_files[::skip]
-            self.poses = self.poses[::skip] # ★ 追加：スキップ時の対応
+
+        self.bev_files = self.scan_files
 
     def __len__(self):
         return len(self.scan_files)
+    
+    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t):
+        """
+        proj_tensor: [7, H, W]
+        mask_t:      [1, H, W]
+        labels_t:    [H, W]
+        return:
+        proj_tensor, mask_t, labels_t, paste_mask_t
+        """
+        paste_mask_t = torch.zeros_like(mask_t).float()
 
-    def apply_copy_paste(self, points, remissions, labels):
-        if not self.database_files:
-            return points, remissions, labels
+        if len(self.bev_files) == 0:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
 
-        num_paste = np.random.randint(1, 4) # 1〜3個の物体をランダムに貼り付け
-        new_pts, new_rems, new_lbls = [points], [remissions], [labels]
+        # 物体クラス。learning_map後のラベルを想定
+        # SemanticKITTIの学習ラベルではだいたい:
+        # 1 car, 2 bicycle, 3 motorcycle, 4 truck, 5 other-vehicle,
+        # 6 person, 7 bicyclist, 8 motorcyclist
+        object_classes = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.long)
 
-        for _ in range(num_paste):
-            npy_file = random.choice(self.database_files)
-            obj_data = np.load(npy_file) # [N, 5] (X, Y, Z, rem, label)
+        src_file = random.choice(self.bev_files)
 
-            obj_pts = obj_data[:, :3].copy()
-            obj_rem = obj_data[:, 3:4].copy()
-            obj_lbl = obj_data[:, 4:5].astype(np.int32).copy()
+        try:
+            with gzip.open(src_file, "rb") as f:
+                src = torch.load(f, map_location="cpu", weights_only=True)
+        except Exception:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
 
-            angle = np.random.uniform(0, 2 * np.pi)
-            rot_mat = np.array([
-                [np.cos(angle), -np.sin(angle), 0],
-                [np.sin(angle),  np.cos(angle), 0],
-                [0,             0,             1]
-            ], dtype=np.float32)
-            obj_pts = np.dot(obj_pts, rot_mat)
+        src_feat = src["proj_tensor"].float()
+        src_mask = src["mask_t"].float()
+        src_label = src["labels_t"].long()
 
-            r = np.random.uniform(5.0, 40.0)
-            theta = np.random.uniform(0, 2 * np.pi)
-            obj_pts[:, 0] += r * np.cos(theta)
-            obj_pts[:, 1] += r * np.sin(theta)
+        # source内の物体クラス領域
+        obj_mask = torch.isin(src_label, object_classes) & (src_mask.squeeze(0) > 0)
 
-            new_pts.append(obj_pts)
-            new_rems.append(obj_rem)
-            new_lbls.append(obj_lbl)
+        ys, xs = torch.where(obj_mask)
+        if ys.numel() == 0:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
 
-        return np.concatenate(new_pts, axis=0), np.concatenate(new_rems, axis=0), np.concatenate(new_lbls, axis=0)
+        # 全物体をまとめるとbboxが大きくなりすぎるので、小さめのランダム窓を切る
+        H, W = labels_t.shape
+        crop_h = 64
+        crop_w = 64
+
+        # 物体画素を1つ選んで、その周辺をpatchにする
+        k = torch.randint(0, ys.numel(), (1,)).item()
+        cy = ys[k].item()
+        cx = xs[k].item()
+
+        y1 = max(0, cy - crop_h // 2)
+        x1 = max(0, cx - crop_w // 2)
+        y2 = min(H, y1 + crop_h)
+        x2 = min(W, x1 + crop_w)
+
+        # 端でサイズが小さくなった場合に補正
+        y1 = max(0, y2 - crop_h)
+        x1 = max(0, x2 - crop_w)
+
+        patch_feat = src_feat[:, y1:y2, x1:x2]
+        patch_label = src_label[y1:y2, x1:x2]
+        patch_obj_mask = obj_mask[y1:y2, x1:x2].unsqueeze(0).float()
+
+        _, h, w = patch_feat.shape
+
+        if h <= 0 or w <= 0:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
+
+        # patch内に物体画素が少なすぎるなら貼らない
+        if patch_obj_mask.sum() < 20:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
+
+        # target側の貼り付け位置
+        if h >= H or w >= W:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
+
+        ty = int(np.clip(y1 + np.random.randint(-20, 21), 0, H - h))
+        tx = int(np.random.randint(0, W - w))
+
+        m = patch_obj_mask > 0.5
+
+        target_region = labels_t[ty:ty+h, tx:tx+w]
+        context_mask = torch.isin(target_region, torch.tensor([9, 10, 11]))
+
+        if context_mask.float().mean() < 0.3:
+            return proj_tensor, mask_t, labels_t, paste_mask_t 
+
+        # 特徴を貼る
+        proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
+            m.expand_as(patch_feat),
+            patch_feat,
+            proj_tensor[:, ty:ty+h, tx:tx+w]
+        )
+
+        # ラベルを貼る
+        labels_t[ty:ty+h, tx:tx+w] = torch.where(
+            m.squeeze(0),
+            patch_label,
+            labels_t[ty:ty+h, tx:tx+w]
+        )
+
+        # maskを更新
+        mask_t[:, ty:ty+h, tx:tx+w] = torch.where(
+            m,
+            torch.ones_like(mask_t[:, ty:ty+h, tx:tx+w]),
+            mask_t[:, ty:ty+h, tx:tx+w]
+        )
+
+        # paste maskを作る
+        paste_mask_t[:, ty:ty+h, tx:tx+w] = torch.where(
+            m,
+            torch.ones_like(paste_mask_t[:, ty:ty+h, tx:tx+w]),
+            paste_mask_t[:, ty:ty+h, tx:tx+w]
+        )
+
+        return proj_tensor, mask_t, labels_t, paste_mask_t
 
     def __getitem__(self, index):
-        bin_file = self.scan_files[index]
-        label_file = bin_file.replace("velodyne", "labels").replace(".bin", ".label")
+        pt_file = self.scan_files[index]
 
-        points, remissions = load_bin(bin_file)
-        labels = load_label(label_file)
+        with gzip.open(pt_file, 'rb') as f:
+            data = torch.load(f, weights_only=True)
 
-        # 4x4の変換行列のために、点を同次座標 (X, Y, Z, 1) にする
-        N = points.shape[0]
-        points_homo = np.hstack((points, np.ones((N, 1), dtype=np.float32)))
-        
-        # 現在のポーズ行列を取得
-        cur_pose = self.poses[index]
-        cur_pose_inv = np.linalg.inv(cur_pose) # 逆行列
-        
-        # 結合用のリスト
-        all_points = [points]
-        all_rems = [remissions]
-        all_labels = [labels]
+        proj_tensor = data['proj_tensor'].float() # [7, H, W]
+        mask_t = data['mask_t'].float()           # [1, H, W]
+        labels_t = data['labels_t'].long()        # [H, W]
 
-        # 現在のシーケンス番号（例: "11"）を取得
-        cur_seq = bin_file.split(os.sep)[-3]
-
-        # 2. 過去2フレーム分（t-1, t-2）をループで処理
-        num_past_frames = 2
-        for i in range(1, num_past_frames + 1):
-            past_idx = index - i
-            
-            # リストの先頭を超えたらストップ
-            if past_idx < 0:
-                break 
-                
-            past_bin_file = self.scan_files[past_idx]
-            past_seq = past_bin_file.split(os.sep)[-3]
-            
-            # ★ 安全装置：もし過去のフレームが別のシーケンス（別の街）ならストップ
-            if cur_seq != past_seq:
-                break
-                
-            past_label_file = past_bin_file.replace("velodyne", "labels").replace(".bin", ".label")
-
-            past_points, past_rems = load_bin(past_bin_file)
-            past_labels = load_label(past_label_file) # ★ 修正: 正しいパスを渡す
-            
-            past_pose = self.poses[past_idx]
-            
-            # 補正行列の計算: (現在の逆行列) @ (過去の行列)
-            transform = cur_pose_inv @ past_pose
-            
-            # 過去の点群に補正行列を掛ける
-            N_past = past_points.shape[0]
-            past_points_h = np.hstack((past_points, np.ones((N_past, 1), dtype=np.float32)))
-            past_points_transformed = (transform @ past_points_h.T).T[:, :3] 
-            
-            all_points.append(past_points_transformed)
-            all_rems.append(past_rems)
-            all_labels.append(past_labels)
-            
-        # 3. すべてを結合
-        points = np.concatenate(all_points, axis=0)
-        remissions = np.concatenate(all_rems, axis=0)
-        labels = np.concatenate(all_labels, axis=0)
+        paste_mask_t = torch.zeros_like(mask_t).float()
 
         if self.is_train and torch.rand(1) > 0.5:
-            points, remissions, labels = self.apply_copy_paste(points, remissions, labels)
-
-        labels = labels.flatten()
-
-        scan = SemLaserScan(self.color_map, project=True)
-        scan.set_points(points, remissions)
-        scan.set_label(labels)
-
-        proj_tensor = torch.from_numpy(scan.pseudo_image.transpose(2, 0, 1)).float()
-        mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float()
-        raw_labels = scan.proj_sem_label
-        mapped_labels = self.map(raw_labels, self.learning_map)
-        labels_t = torch.from_numpy(mapped_labels).long()
+            proj_tensor, mask_t, labels_t, paste_mask_t = self.apply_bev_copy_paste(
+            proj_tensor, mask_t, labels_t
+        )
 
         # ch 0: max_z 
         proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
@@ -227,31 +201,41 @@ class SemanticKitti(Dataset):
                 proj_tensor = torch.roll(proj_tensor, shifts=roll_shift, dims=2)
                 mask_t = torch.roll(mask_t, shifts=roll_shift, dims=2)
                 labels_t = torch.roll(labels_t, shifts=roll_shift, dims=1)
+                paste_mask_t = torch.roll(paste_mask_t, shifts=roll_shift, dims=2)
 
             # 2. ランダム水平反転
             if torch.rand(1) > 0.5:
                 proj_tensor = torch.flip(proj_tensor, dims=[2])
                 mask_t = torch.flip(mask_t, dims=[2])
                 labels_t = torch.flip(labels_t, dims=[1])
+                paste_mask_t = torch.flip(paste_mask_t, dims=[2])
                 
             if torch.rand(1) > 0.5:
                 drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
                 mask_t = mask_t * drop_mask
+                paste_mask_t = paste_mask_t * drop_mask
+
+            # # 4. Feature Jittering 
+            # if torch.rand(1) > 0.5:
+            #     # mean=0, std=0.02 のノイズを作成
+            #     noise = torch.randn_like(proj_tensor) * 0.02
+            #     # ノイズを足す（マスクされている真空地帯にはノイズを乗せない）
+            #     proj_tensor = (proj_tensor + noise) * mask_t
 
         dummy_list = []
         dummy_tensor = torch.tensor(0)
 
-        path_norm = os.path.normpath(bin_file)
+        path_norm = os.path.normpath(pt_file)
         path_split = path_norm.split(os.sep)
         path_seq = path_split[-3]
-        path_name = path_split[-1].replace(".bin", ".label") 
+        path_name = path_split[-1].replace(".pt", ".label")
 
         return (
             proj_tensor, mask_t, labels_t, dummy_list, path_seq, path_name,
             dummy_list, dummy_list, dummy_tensor, dummy_list, 
             dummy_list, dummy_list, dummy_tensor, dummy_list, 
-            torch.tensor(0), dummy_tensor
+            paste_mask_t, dummy_tensor
         )
 
     @staticmethod
