@@ -53,7 +53,7 @@ class SemanticKitti(Dataset):
         # SemanticKITTIの学習ラベルではだいたい:
         # 1 car, 2 bicycle, 3 motorcycle, 4 truck, 5 other-vehicle,
         # 6 person, 7 bicyclist, 8 motorcyclist
-        object_classes = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.long)
+        object_classes = torch.tensor([ 2, 3, 4, 5, 6, 7, 8], dtype=torch.long)
 
         src_file = random.choice(self.bev_files)
 
@@ -163,7 +163,7 @@ class SemanticKitti(Dataset):
 
         paste_mask_t = torch.zeros_like(mask_t).float()
 
-        if self.is_train and torch.rand(1) > 0.5:
+        if self.is_train and torch.rand(1) > 0.25:
             proj_tensor, mask_t, labels_t, paste_mask_t = self.apply_bev_copy_paste(
             proj_tensor, mask_t, labels_t
         )
