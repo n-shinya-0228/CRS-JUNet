@@ -1,32 +1,9 @@
 import os
 import torch
 import numpy as np
-import glob
 import random
+import gzip
 from torch.utils.data import Dataset
-from lib.utils.laserscan_Polar5 import SemLaserScan
-
-EXTENSIONS_SCAN = ['.bin']
-EXTENSIONS_EDGE = ['.png']
-EXTENSIONS_LABEL = ['.label']
-
-def is_scan(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_SCAN)
-
-def is_edge(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_EDGE)
-
-def is_label(filename):
-    return any(filename.endswith(ext) for ext in EXTENSIONS_LABEL)
-
-def load_bin(bin_path):
-    scan = np.fromfile(bin_path, dtype=np.float32).reshape((-1, 4))
-    return scan[:, 0:3], scan[:, 3:4]  # points(N,3), remissions(N,1)
-
-def load_label(label_path):
-    label = np.fromfile(label_path, dtype=np.int32).reshape((-1, 1))
-    return label
-
 
 class SemanticKitti(Dataset):
 
@@ -43,102 +20,154 @@ class SemanticKitti(Dataset):
         self.learning_map_inv = learning_map_inv
         self.gt = gt
         self.is_train = is_train
-        
-        self.database_files = glob.glob("copy_paste_database/*.npy")
-        self.database_objs = []
-
-        for f in self.database_files:
-            obj = np.load(f).astype(np.float32)
-            self.database_objs.append(obj)
 
         self.scan_files = []
         for seq in self.sequences:
-            velodyne_path = os.path.join(self.root, seq, "velodyne")
-            if os.path.exists(velodyne_path):
-                scans = [os.path.join(velodyne_path, f) for f in sorted(os.listdir(velodyne_path)) if f.endswith(".bin")]
+            bev_path = os.path.join(self.root, seq, "polar_512_prlb")
+            if os.path.exists(bev_path):
+                scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
 
         if skip:
             self.scan_files = self.scan_files[::skip]
 
+        self.bev_files = self.scan_files
+
     def __len__(self):
         return len(self.scan_files)
+    
+    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t):
+        paste_mask_t = torch.zeros_like(mask_t).float()
 
-    def apply_copy_paste(self, points, remissions, labels):
-        if not self.database_objs:
-            paste_flags = np.zeros((points.shape[0], 1), dtype=np.float32)
-            return points, remissions, labels, paste_flags
+        if len(self.bev_files) == 0:
+            return proj_tensor, mask_t, labels_t, paste_mask_t
 
-        num_paste = np.random.randint(1, 4)
+        object_classes = torch.tensor([2, 3, 4, 5, 6, 7, 8, 18, 19], dtype=torch.long)
+        context_classes = torch.tensor([9, 10, 11], dtype=torch.long)
 
-        new_pts = [points]
-        new_rems = [remissions]
-        new_lbls = [labels]
-        new_flags = [np.zeros((points.shape[0], 1), dtype=np.float32)]
+        H, W = labels_t.shape
+        crop_h = 64
+        crop_w = 64
 
-        for _ in range(num_paste):
-            obj_data = random.choice(self.database_objs)
+        for attempt in range(20):
+            src_file = random.choice(self.bev_files)
 
-            obj_pts = obj_data[:, :3].copy()
-            obj_rem = obj_data[:, 3:4].copy()
-            obj_lbl = obj_data[:, 4:5].astype(np.int32).copy()
+            try:
+                with gzip.open(src_file, "rb") as f:
+                    src = torch.load(f, map_location="cpu", weights_only=True)
+            except Exception:
+                continue
 
-            angle = np.random.uniform(0, 2 * np.pi)
-            rot_mat = np.array([
-                [np.cos(angle), -np.sin(angle), 0],
-                [np.sin(angle),  np.cos(angle), 0],
-                [0,              0,             1]
-            ], dtype=np.float32)
+            src_feat = src["proj_tensor"].float()
+            src_mask = src["mask_t"].float()
+            src_label = src["labels_t"].long()
 
-            obj_pts = np.dot(obj_pts, rot_mat)
+            obj_mask = torch.isin(src_label, object_classes) & (src_mask.squeeze(0) > 0)
 
-            r = np.random.uniform(5.0, 40.0)
-            theta = np.random.uniform(0, 2 * np.pi)
-            obj_pts[:, 0] += r * np.cos(theta)
-            obj_pts[:, 1] += r * np.sin(theta)
+            ys, xs = torch.where(obj_mask)
+            if ys.numel() == 0:
+                continue
 
-            obj_flag = np.ones((obj_pts.shape[0], 1), dtype=np.float32)
+            k = torch.randint(0, ys.numel(), (1,)).item()
+            cy = ys[k].item()
+            cx = xs[k].item()
 
-            new_pts.append(obj_pts)
-            new_rems.append(obj_rem)
-            new_lbls.append(obj_lbl)
-            new_flags.append(obj_flag)
+            y1 = max(0, cy - crop_h // 2)
+            x1 = max(0, cx - crop_w // 2)
+            y2 = min(H, y1 + crop_h)
+            x2 = min(W, x1 + crop_w)
 
-        return (
-            np.concatenate(new_pts, axis=0),
-            np.concatenate(new_rems, axis=0),
-            np.concatenate(new_lbls, axis=0),
-            np.concatenate(new_flags, axis=0)
-        )
+            y1 = max(0, y2 - crop_h)
+            x1 = max(0, x2 - crop_w)
+
+            patch_feat = src_feat[:, y1:y2, x1:x2]
+            patch_label = src_label[y1:y2, x1:x2]
+            patch_obj_mask = obj_mask[y1:y2, x1:x2].unsqueeze(0).float()
+
+            _, h, w = patch_feat.shape
+
+            if h <= 0 or w <= 0:
+                continue
+
+            if patch_obj_mask.sum() < 20:
+                continue
+
+            if h >= H or w >= W:
+                continue
+
+            ty = int(np.clip(y1 + np.random.randint(-20, 21), 0, H - h))
+            tx = int(np.random.randint(0, W - w))
+
+            m = patch_obj_mask > 0.5
+            m2d = m.squeeze(0)
+
+            target_region = labels_t[ty:ty+h, tx:tx+w]
+            target_under_obj = target_region[m2d]
+
+            if target_under_obj.numel() == 0:
+                continue
+
+            context_mask = torch.isin(target_under_obj, context_classes)
+
+            if context_mask.float().mean() < 0.3:
+                continue
+
+            proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
+                m.expand_as(patch_feat),
+                patch_feat,
+                proj_tensor[:, ty:ty+h, tx:tx+w]
+            )
+
+            labels_t[ty:ty+h, tx:tx+w] = torch.where(
+                m.squeeze(0),
+                patch_label,
+                labels_t[ty:ty+h, tx:tx+w]
+            )
+
+            mask_t[:, ty:ty+h, tx:tx+w] = torch.where(
+                m,
+                torch.ones_like(mask_t[:, ty:ty+h, tx:tx+w]),
+                mask_t[:, ty:ty+h, tx:tx+w]
+            )
+
+            paste_mask_t[:, ty:ty+h, tx:tx+w] = torch.where(
+                m,
+                torch.ones_like(paste_mask_t[:, ty:ty+h, tx:tx+w]),
+                paste_mask_t[:, ty:ty+h, tx:tx+w]
+            )
+
+            return proj_tensor, mask_t, labels_t, paste_mask_t
+
+        return proj_tensor, mask_t, labels_t, paste_mask_t
 
     def __getitem__(self, index):
-        bin_file = self.scan_files[index]
-        label_file = bin_file.replace("velodyne", "labels").replace(".bin", ".label")
+        pt_file = self.scan_files[index]
 
-        points, remissions = load_bin(bin_file)
-        labels = load_label(label_file)
+        with gzip.open(pt_file, 'rb') as f:
+            data = torch.load(f, weights_only=True)
+
+        proj_tensor = data['proj_tensor'].float() # [7, H, W]
+        mask_t = data['mask_t'].float()           # [1, H, W]
+        labels_t = data['labels_t'].long()        # [H, W]
+
+        paste_mask_t = torch.zeros_like(mask_t).float()
 
         if self.is_train and torch.rand(1) > 0.5:
-            points, remissions, labels, paste_flags = self.apply_copy_paste(
-                points, remissions, labels
-            )
-        else:
-            paste_flags = np.zeros((points.shape[0], 1), dtype=np.float32)
+            num_paste = np.random.randint(2, 5)  # 2〜4回試す
+            max_paste_pixels = 1500
 
-        labels = labels.flatten()
+            for _ in range(num_paste):
+                proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t)
 
-        scan = SemLaserScan(self.color_map, project=True)
-        scan.set_points(points, remissions)
-        scan.set_paste_flags(paste_flags)
-        scan.set_label(labels)
+                if paste_mask_new.sum() > 0:
+                    proj_tensor = proj_tensor_new
+                    mask_t = mask_t_new
+                    labels_t = labels_t_new
+                    paste_mask_t = torch.maximum(paste_mask_t, paste_mask_new)
 
-        proj_tensor = torch.from_numpy(scan.pseudo_image.transpose(2, 0, 1)).float()
-        mask_t = torch.from_numpy(scan.proj_mask).unsqueeze(0).float()
-        raw_labels = scan.proj_sem_label
-        mapped_labels = self.map(raw_labels, self.learning_map)
-        labels_t = torch.from_numpy(mapped_labels).long()
-        paste_mask_t = torch.from_numpy(scan.proj_paste_mask).unsqueeze(0).float()
-
+                if paste_mask_t.sum() > max_paste_pixels:
+                    break
+              
         # ch 0: max_z 
         proj_tensor[0] = torch.clamp(proj_tensor[0], -5.0, 15.0)
         proj_tensor[0] = (proj_tensor[0] - 1.0) / 5.0
@@ -171,29 +200,36 @@ class SemanticKitti(Dataset):
             if roll_shift > 0:
                 proj_tensor = torch.roll(proj_tensor, shifts=roll_shift, dims=2)
                 mask_t = torch.roll(mask_t, shifts=roll_shift, dims=2)
-                paste_mask_t = torch.roll(paste_mask_t, shifts=roll_shift, dims=2)
                 labels_t = torch.roll(labels_t, shifts=roll_shift, dims=1)
+                paste_mask_t = torch.roll(paste_mask_t, shifts=roll_shift, dims=2)
 
             # 2. ランダム水平反転
             if torch.rand(1) > 0.5:
                 proj_tensor = torch.flip(proj_tensor, dims=[2])
                 mask_t = torch.flip(mask_t, dims=[2])
-                paste_mask_t = torch.flip(paste_mask_t, dims=[2])
                 labels_t = torch.flip(labels_t, dims=[1])
+                paste_mask_t = torch.flip(paste_mask_t, dims=[2])
                 
             if torch.rand(1) > 0.5:
                 drop_mask = (torch.rand(proj_tensor.shape[1:]) > 0.10).unsqueeze(0).float()
                 proj_tensor = proj_tensor * drop_mask
-                paste_mask_t = paste_mask_t * drop_mask
                 mask_t = mask_t * drop_mask
+                paste_mask_t = paste_mask_t * drop_mask
+
+            # # 4. Feature Jittering 
+            # if torch.rand(1) > 0.5:
+            #     # mean=0, std=0.02 のノイズを作成
+            #     noise = torch.randn_like(proj_tensor) * 0.02
+            #     # ノイズを足す（マスクされている真空地帯にはノイズを乗せない）
+            #     proj_tensor = (proj_tensor + noise) * mask_t
 
         dummy_list = []
         dummy_tensor = torch.tensor(0)
 
-        path_norm = os.path.normpath(bin_file)
+        path_norm = os.path.normpath(pt_file)
         path_split = path_norm.split(os.sep)
         path_seq = path_split[-3]
-        path_name = path_split[-1].replace(".bin", ".label") 
+        path_name = path_split[-1].replace(".pt", ".label")
 
         return (
             proj_tensor, mask_t, labels_t, dummy_list, path_seq, path_name,

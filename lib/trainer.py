@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = float(self.ARCH["train"].get("w_paste", 0.5))  
+        self.w_paste = 0.05
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
@@ -559,8 +559,8 @@ class Trainer():
                     non_blocking=True).long()
                 paste_mask = paste_mask.cuda(non_blocking=True).float()
             
-            if np.random.rand() < 0.5: 
-                in_vol, proj_mask, proj_labels, paste_mask = apply_polarmix(in_vol, proj_mask, proj_labels, paste_mask)
+            # if np.random.rand() < 0.5: 
+            #     in_vol, proj_mask, proj_labels, paste_mask = apply_polarmix(in_vol, proj_mask, proj_labels, paste_mask)
 
             if proj_mask.dim() == 3:
                 proj_mask_exp = proj_mask.unsqueeze(1).float()
@@ -666,6 +666,14 @@ class Trainer():
             #             lcur=losses.val, lavg=losses.avg,
             #             acur=acc.val, aavg=acc.avg,
             #             icur=iou.val, iavg=iou.avg))
+            if i == 0:
+                self.logger.info(f"in_vol shape: {in_vol.shape}")
+                self.logger.info(f"proj_mask shape: {proj_mask.shape}")
+                self.logger.info(f"proj_labels shape: {proj_labels.shape}")
+                self.logger.info(f"paste_mask shape: {paste_mask.shape}")
+                
+            if i % report == 0:
+                self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg
 

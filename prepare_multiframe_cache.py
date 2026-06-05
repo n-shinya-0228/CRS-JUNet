@@ -91,8 +91,7 @@ def build_multiframe_cache_for_sequence(dataset_root, seq, num_past_frames=2):
             past_points, past_rems = load_bin(past_bin_path)
             past_labels = load_label(past_label_path)
 
-            past_keep_ratio = 0.1 
-
+            past_keep_ratio = 0.3
             if past_keep_ratio < 1.0:
                 n_past = past_points.shape[0]
                 keep_n = int(n_past * past_keep_ratio)
@@ -101,7 +100,6 @@ def build_multiframe_cache_for_sequence(dataset_root, seq, num_past_frames=2):
                 past_points = past_points[keep_idx]
                 past_rems = past_rems[keep_idx]
                 past_labels = past_labels[keep_idx]
-
 
             past_pose = poses[past_idx]
             transform = cur_pose_inv @ past_pose

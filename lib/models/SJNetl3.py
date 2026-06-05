@@ -500,7 +500,7 @@ class SJNetl3(nn.Module):
         in_channels: int = 7,     
         nclasses: int = 20,
         drop: float = 0.5,
-        base_ch: int = 32,
+        base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
         swa_window: Tuple[int, int] = (8, 8),
@@ -568,7 +568,7 @@ class SJNetl3(nn.Module):
         s3 = self.enc3(s2)
         s4 = self.enc4(s3)  
         b = self.aspp(s4) 
-        b = self.eca(b)
+        # b = self.eca(b)
         b = self.bottleneck_proj(b)
         b = self.lka(b)
         d4 = self.up4(b, s3)

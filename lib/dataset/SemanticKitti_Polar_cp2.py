@@ -3,7 +3,6 @@ import torch
 import numpy as np
 import glob
 import random
-import time
 from torch.utils.data import Dataset
 from lib.utils.laserscan_Polar5 import SemLaserScan
 
@@ -55,14 +54,10 @@ class SemanticKitti(Dataset):
         self.gt = gt
         self.is_train = is_train
         self.use_multiframe_cache = True
-        self.num_past_frames = 1
+        self.num_past_frames = 2
+        self._debug_cache_printed = False
         
         self.database_files = glob.glob("copy_paste_database/*.npy")
-        self.database_objs = []
-
-        for f in self.database_files:
-            obj = np.load(f).astype(np.float32)
-            self.database_objs.append(obj)
 
         self.scan_files = []
         self.poses = [] # ★ 追加：ポーズ行列を保存するリスト
@@ -91,7 +86,7 @@ class SemanticKitti(Dataset):
         return len(self.scan_files)
 
     def apply_copy_paste(self, points, remissions, labels):
-        if not self.database_objs:
+        if not self.database_files:
             paste_flags = np.zeros((points.shape[0], 1), dtype=np.float32)
             return points, remissions, labels, paste_flags
 
@@ -103,7 +98,8 @@ class SemanticKitti(Dataset):
         new_flags = [np.zeros((points.shape[0], 1), dtype=np.float32)]
 
         for _ in range(num_paste):
-            obj_data = random.choice(self.database_objs)
+            npy_file = random.choice(self.database_files)
+            obj_data = np.load(npy_file)
 
             obj_pts = obj_data[:, :3].copy()
             obj_rem = obj_data[:, 3:4].copy()
@@ -144,13 +140,13 @@ class SemanticKitti(Dataset):
         cache_file = bin_file.replace(
             "velodyne",
             f"multiframe_{self.num_past_frames}past"
-            ).replace(".bin", ".npz")
-        
+        ).replace(".bin", ".npz")
+
         if self.use_multiframe_cache and os.path.exists(cache_file):
             with np.load(cache_file) as data:
-               points = data["points"].astype(np.float32)
-               remissions = data["remissions"].astype(np.float32)
-               labels = data["labels"].astype(np.int32)
+                points = data["points"].astype(np.float32)
+                remissions = data["remissions"].astype(np.float32)
+                labels = data["labels"].astype(np.int32)
 
         else:
             points, remissions = load_bin(bin_file)
@@ -189,9 +185,9 @@ class SemanticKitti(Dataset):
                 past_points_h = np.hstack(
                     (past_points, np.ones((n_past, 1), dtype=np.float32))
                 )
-                past_points_transformed = (transform @ past_points_h.T).T[:, :3].astype(np.float32)
+                past_points_transformed = (transform @ past_points_h.T).T[:, :3]
 
-                all_points.append(past_points_transformed)
+                all_points.append(past_points_transformed.astype(np.float32))
                 all_rems.append(past_rems)
                 all_labels.append(past_labels)
 
@@ -201,50 +197,12 @@ class SemanticKitti(Dataset):
 
         if self.is_train and torch.rand(1) > 0.5:
             points, remissions, labels, paste_flags = self.apply_copy_paste(
-                points, remissions, labels
-            )
+            points, remissions, labels
+        )
         else:
             paste_flags = np.zeros((points.shape[0], 1), dtype=np.float32)
 
-        max_points = 80000
-
-        rare_raw_labels = np.array([
-            10, 11, 15,        # car, bicycle, motorcycle
-            30, 31, 32,        # person, bicyclist, motorcyclist
-            252, 253, 254, 255 # moving classes
-            ], dtype=np.int32)
-
-
-        if points.shape[0] > max_points:
-            labels_flat = labels.reshape(-1)
-            paste_flags_flat = paste_flags.reshape(-1)
-
-            paste_idx = np.where(paste_flags_flat > 0.5)[0]
-            rare_idx = np.where(np.isin(labels_flat & 0xFFFF, rare_raw_labels))[0]
-
-            important_idx = np.unique(np.concatenate([paste_idx, rare_idx]))
-            all_idx = np.arange(points.shape[0])
-            other_idx = np.setdiff1d(all_idx, important_idx, assume_unique=False)
-
-            remain = max_points - len(important_idx)
-
-            if remain > 0:
-                if len(other_idx) > remain:
-                    keep_other = np.random.choice(other_idx, remain, replace=False)
-                    
-                else:
-                    keep_other = other_idx
-
-                keep_idx = np.concatenate([important_idx, keep_other])
-            else:
-                keep_idx = np.random.choice(important_idx, max_points, replace=False)
-
-            points = points[keep_idx]
-            remissions = remissions[keep_idx]
-            labels = labels[keep_idx]
-            paste_flags = paste_flags[keep_idx]
-
-        labels = labels.flatten()
+        labels = labels.flatten()    
 
         scan = SemLaserScan(self.color_map, project=True)
         scan.set_points(points, remissions)
