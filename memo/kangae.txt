@@ -6,6 +6,14 @@ Step 4: Temporal-consistent Copy-Paste
 Step 5: Visibility-aware Loss / Feature Learning
 Step 6: Temporal Consistency Loss
 
+Step 0: 現在フレームのみ
+Step 1: 現在フレームのみ
+Step 2: 現在フレームのみ
+Step 3: 現在フレームのみ
+Step 4: 過去フレームを使う
+Step 5: 過去フレームを使ってもよい
+Step 6: 過去フレーム必須
+
 学会で強調すべき新規性は、個々の部品そのものではなく、次の1点に集約するのが一番強いです。
 
 BEVセマンティックセグメンテーションにおいて、貼り付け物体を「どこに・どれくらい見える状態で・時間的にどう動くか」まで制御する Spatio-temporal Visibility-aware Copy-Paste を提案した。
