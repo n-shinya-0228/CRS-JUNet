@@ -49,7 +49,7 @@ class SemanticKitti(Dataset):
         crop_h = 64
         crop_w = 64
 
-        for attempt in range(20):
+        for attempt in range(5):
             src_file = random.choice(self.bev_files)
 
             try:
@@ -89,7 +89,7 @@ class SemanticKitti(Dataset):
             if h <= 0 or w <= 0:
                 continue
 
-            if patch_obj_mask.sum() < 20:
+            if patch_obj_mask.sum() < 15:
                 continue
 
             if h >= H or w >= W:
@@ -109,7 +109,7 @@ class SemanticKitti(Dataset):
 
             context_mask = torch.isin(target_under_obj, context_classes)
 
-            if context_mask.float().mean() < 0.3:
+            if context_mask.float().mean() < 0.2:
                 continue
 
             proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
@@ -152,8 +152,8 @@ class SemanticKitti(Dataset):
 
         paste_mask_t = torch.zeros_like(mask_t).float()
 
-        if self.is_train and torch.rand(1) > 0.5:
-            num_paste = np.random.randint(2, 5)  # 2〜4回試す
+        if self.is_train and torch.rand(1) > 0.25:
+            num_paste = np.random.randint(1, 4)  # 2〜4回試す
             max_paste_pixels = 1500
 
             for _ in range(num_paste):
