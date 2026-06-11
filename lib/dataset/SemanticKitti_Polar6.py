@@ -197,6 +197,15 @@ class SemanticKitti(Dataset):
             if overlap_ratio > occ_th:
                 continue
 
+            #step2.5 一部だけ隠したcopy&paste
+            visible_m2d = m2d & (~target_foreground)
+
+            # 見えている部分が少なすぎる場合はスキップ
+            if visible_m2d.sum() < 5:
+                continue
+
+            m = visible_m2d.unsqueeze(0)
+
             proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
                 m.expand_as(patch_feat),
                 patch_feat,
