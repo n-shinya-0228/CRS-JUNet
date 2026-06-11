@@ -199,12 +199,16 @@ class SemanticKitti(Dataset):
 
             #step3 一部だけ隠したcopy&paste
             visible_m2d = m2d & (~target_foreground)
+            visible_ratio = visible_m2d.sum().float() / m2d.sum().float()
 
-            # 見えている部分が少なすぎる場合はスキップ
-            if visible_m2d.sum() < 5:
+            if visible_ratio < 0.3:
+                continue
+
+            if visible_ratio > 0.95 and torch.rand(1).item() > 0.3:
                 continue
 
             m = visible_m2d.unsqueeze(0)
+            
 
             proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
                 m.expand_as(patch_feat),
