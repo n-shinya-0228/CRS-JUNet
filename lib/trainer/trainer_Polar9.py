@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = 0.05
+        self.w_paste = 0.00
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
@@ -671,6 +671,8 @@ class Trainer():
                 self.logger.info(f"proj_mask shape: {proj_mask.shape}")
                 self.logger.info(f"proj_labels shape: {proj_labels.shape}")
                 self.logger.info(f"paste_mask shape: {paste_mask.shape}")
+                
+            if i % report == 0:
                 self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg

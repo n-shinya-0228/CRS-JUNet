@@ -1,5 +1,6 @@
 Step 0: 現在のbaselineを固定
 Step 1: Paste-region weighted loss
+Step1.5: Minor-class Copy-Paste
 Step 2: Context-aware Copy-Paste
 Step 3: Occlusion-aware Copy-Paste
 Step 4: Temporal-consistent Copy-Paste
@@ -89,6 +90,12 @@ Visibility-controlled hard sample generation
 少数クラスの難例を意図的に生成する
 
 という主張にすると強いです。
+
+tep3では、Context-aware Copy-Pasteに加えて、貼り付け先に既存の前景物体が存在するかを確認するOcclusion-aware制約を導入した。
+
+貼り付ける物体領域と、貼り付け先の既存前景クラス領域の重なり率を計算し、重なりが一定以上の場合は貼り付けを行わない。
+
+これにより、車や建物の上に小物体が不自然に重なるような合成を抑制し、より実環境に近いCopy-Pasteを行うことを目的とした。
 
 強調すべき新規性 3：時系列入力に対して、貼り付け物体も時間的に一貫させる
 
