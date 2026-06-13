@@ -103,6 +103,11 @@ Step 3: Occlusion-aware Copy-Paste
 Step 3.5:
 貼り付け後に、どれくらい物体が見えているかを制御する
 
+Step4: 前後フレームのcontextを使って、時間的に破綻しにくい位置を選ぶ
+Temporal context check付きCopy-Paste
+貼り付け先が前後フレームでも自然な場所か確認する
+Step6: 出力そのものにTemporal Consistency Lossをかける
+
 強調すべき新規性 3：時系列入力に対して、貼り付け物体も時間的に一貫させる
 
 ここが一番新規性として強く見せやすいです。
