@@ -60,6 +60,22 @@ class SemanticKitti(Dataset):
         # fallback
         else:
             return torch.tensor([9, 10, 11], dtype=torch.long)
+
+    def get_occlusion_threshold(self, obj_cls):
+        # bicycle, motorcycle, person, bicyclist, motorcyclist
+        if obj_cls in [2, 3, 6, 7, 8]:
+            return 0.2
+
+        # truck, other-vehicle
+        elif obj_cls in [4, 5]:
+            return 0.3
+
+        # pole, traffic-sign
+        elif obj_cls in [18, 19]:
+            return 0.4
+
+        else:
+            return 0.3
     
     def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t):
         paste_mask_t = torch.zeros_like(mask_t).float()
@@ -74,7 +90,7 @@ class SemanticKitti(Dataset):
         crop_h = 64
         crop_w = 64
 
-        for attempt in range(5):
+        for attempt in range(12):
             src_file = random.choice(self.bev_files)
 
             try:
@@ -124,7 +140,7 @@ class SemanticKitti(Dataset):
                 continue
 
             # 小物体用なので少し緩め
-            if patch_obj_mask.sum() < 15:
+            if patch_obj_mask.sum() < 10:
                 continue
 
             if h >= H or w >= W:
@@ -148,8 +164,51 @@ class SemanticKitti(Dataset):
             context_mask = torch.isin(target_under_obj, context_classes)
 
             # Step2: クラスごとのcontext条件
-            if context_mask.float().mean() < 0.2:
+            if context_mask.float().mean() < 0.1:
                 continue
+
+            # ==============================
+            # Step3: Occlusion-aware check
+            # ==============================
+            target_label_region = labels_t[ty:ty+h, tx:tx+w]
+            target_mask_region = mask_t[:, ty:ty+h, tx:tx+w]
+            
+            m = patch_obj_mask > 0.5
+            m2d = m.squeeze(0)
+            
+            occupied = (target_mask_region.squeeze(0) > 0) & m2d
+            
+            foreground_classes = torch.tensor(
+                [1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 18, 19],
+                dtype=torch.long
+                )
+                
+            target_foreground = torch.isin(target_label_region, foreground_classes) & occupied
+
+            # 貼り付ける物体領域の中で、既存前景と重なる割合を計算
+            if m2d.sum() > 0:
+                overlap_ratio = target_foreground[m2d].float().mean()
+            else:
+                continue
+                
+            occ_th = self.get_occlusion_threshold(obj_cls)
+            
+            # クラスごとの閾値で判定
+            if overlap_ratio > occ_th:
+                continue
+
+            #step3 一部だけ隠したcopy&paste
+            visible_m2d = m2d & (~target_foreground)
+            visible_ratio = visible_m2d.sum().float() / m2d.sum().float()
+
+            if visible_ratio < 0.3:
+                continue
+
+            if visible_ratio > 0.95 and torch.rand(1).item() > 0.3:
+                continue
+
+            m = visible_m2d.unsqueeze(0)
+            
 
             proj_tensor[:, ty:ty+h, tx:tx+w] = torch.where(
                 m.expand_as(patch_feat),
@@ -192,7 +251,7 @@ class SemanticKitti(Dataset):
         paste_mask_t = torch.zeros_like(mask_t).float()
 
         if self.is_train and torch.rand(1) > 0.25:
-            num_paste = np.random.randint(2, 5)  # 2〜4回試す
+            num_paste = np.random.randint(1, 4)  # 2〜4回試す
             max_paste_pixels = 1500
 
             for _ in range(num_paste):
