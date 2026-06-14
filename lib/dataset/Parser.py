@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from .SemanticKitti_Polar5 import SemanticKitti
+from .SemanticKitti_Polar7 import SemanticKitti
 
 def bev_collate_fn(batch):
     """

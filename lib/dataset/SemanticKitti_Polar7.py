@@ -90,7 +90,7 @@ class SemanticKitti(Dataset):
         crop_h = 64
         crop_w = 64
 
-        for attempt in range(12):
+        for attempt in range(16):
             src_file = random.choice(self.bev_files)
 
             try:
@@ -164,7 +164,7 @@ class SemanticKitti(Dataset):
             context_mask = torch.isin(target_under_obj, context_classes)
 
             # Step2: クラスごとのcontext条件
-            if context_mask.float().mean() < 0.1:
+            if context_mask.float().mean() < 0.05:
                 continue
 
             # ==============================
@@ -191,20 +191,20 @@ class SemanticKitti(Dataset):
             else:
                 continue
                 
-            occ_th = self.get_occlusion_threshold(obj_cls)
+            # occ_th = self.get_occlusion_threshold(obj_cls)
             
-            # クラスごとの閾値で判定
-            if overlap_ratio > occ_th:
-                continue
+            # # クラスごとの閾値で判定
+            # if overlap_ratio > occ_th:
+            #     continue
 
             #step3 一部だけ隠したcopy&paste
             visible_m2d = m2d & (~target_foreground)
             visible_ratio = visible_m2d.sum().float() / m2d.sum().float()
 
-            if visible_ratio < 0.3:
+            if visible_ratio < 0.2:
                 continue
 
-            if visible_ratio > 0.95 and torch.rand(1).item() > 0.3:
+            if visible_ratio > 0.95 and torch.rand(1).item() > 0.7:
                 continue
 
             m = visible_m2d.unsqueeze(0)
