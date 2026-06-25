@@ -157,7 +157,7 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar4.py' # ファイル名変更
+        dataset_name = 'SemanticKitti_Polar7.py' # ファイル名変更
         trainer_name = 'trainer_Polar9.py'  # このファイル名
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
@@ -285,7 +285,7 @@ class Trainer():
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
             T_max=max(down_epochs, 1),
-            eta_min=self.ARCH["train"]["lr"] * 0.00001)
+            eta_min=self.ARCH["train"].get("min_lr", self.ARCH["train"]["lr"] * 0.00001))
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
@@ -622,8 +622,6 @@ class Trainer():
                 lr = self.optimizer.param_groups[0]["lr"]
                 self.logger.info(
                     'Lr: {lr:.3e} | '
-                    'Data {dcur:.3f} ({davg:.3f}) | '
-                    'Batch {bcur:.3f} ({bavg:.3f}) | '
                     'Epoch: [{ep}][{it}/{tot}] | '
                     'Loss {lcur:.4f} ({lavg:.4f}) | '
                     'acc {acur:.3f} ({aavg:.3f}) | '
@@ -671,7 +669,7 @@ class Trainer():
                 self.logger.info(f"proj_mask shape: {proj_mask.shape}")
                 self.logger.info(f"proj_labels shape: {proj_labels.shape}")
                 self.logger.info(f"paste_mask shape: {paste_mask.shape}")
-                
+
             if i % report == 0:
                 self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
 

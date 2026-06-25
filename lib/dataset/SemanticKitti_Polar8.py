@@ -28,6 +28,11 @@ class SemanticKitti(Dataset):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
 
+        self.file_to_index = {}
+        
+        for i, f in enumerate(self.scan_files):
+            self.file_to_index[f] = i
+
         if skip:
             self.scan_files = self.scan_files[::skip]
 
@@ -35,6 +40,34 @@ class SemanticKitti(Dataset):
 
     def __len__(self):
         return len(self.scan_files)
+    
+    def get_seq_frame(self, pt_file):
+        path_norm = os.path.normpath(pt_file)
+        parts = path_norm.split(os.sep)
+        seq = parts[-3]
+        frame = int(parts[-1].replace(".pt", ""))
+        return seq, frame
+    
+    def get_neighbor_file(self, pt_file, offset):
+        seq, frame = self.get_seq_frame(pt_file)
+        neighbor_name = f"{frame + offset:06d}.pt"
+        neighbor_file = os.path.join(self.root, seq, "polar_512_prlb", neighbor_name)
+
+        if os.path.exists(neighbor_file):
+            return neighbor_file
+        else:
+            return None
+        
+    def load_neighbor_label(self, pt_file):
+        if pt_file is None:
+            return None
+
+        try:
+            with gzip.open(pt_file, "rb") as f:
+                data = torch.load(f, map_location="cpu", weights_only=True)
+            return data["labels_t"].long()
+        except Exception:
+            return None
     
     def get_context_classes(self, obj_cls):
         """
@@ -77,7 +110,7 @@ class SemanticKitti(Dataset):
         else:
             return 0.3
     
-    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t):
+    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t, prev_labels_t=None, next_labels_t=None):
         paste_mask_t = torch.zeros_like(mask_t).float()
 
         if len(self.bev_files) == 0:
@@ -90,7 +123,7 @@ class SemanticKitti(Dataset):
         crop_h = 64
         crop_w = 64
 
-        for attempt in range(16):
+        for attempt in range(12):
             src_file = random.choice(self.bev_files)
 
             try:
@@ -164,7 +197,37 @@ class SemanticKitti(Dataset):
             context_mask = torch.isin(target_under_obj, context_classes)
 
             # Step2: クラスごとのcontext条件
-            if context_mask.float().mean() < 0.05:
+            if context_mask.float().mean() < 0.1:
+                continue
+
+            # ==============================
+            # # Step4: Temporal context check
+            # # ==============================
+             
+            temporal_scores = []
+            # current frame
+            temporal_scores.append(context_mask.float().mean())
+            # previous frame
+            if prev_labels_t is not None:
+                prev_region = prev_labels_t[ty:ty+h, tx:tx+w]
+                prev_under_obj = prev_region[m2d]
+                
+                if prev_under_obj.numel() > 0:
+                    prev_context_mask = torch.isin(prev_under_obj, context_classes)
+                    temporal_scores.append(prev_context_mask.float().mean())
+
+            # next frame
+            if next_labels_t is not None:
+                next_region = next_labels_t[ty:ty+h, tx:tx+w]
+                next_under_obj = next_region[m2d]
+
+                if next_under_obj.numel() > 0:
+                    next_context_mask = torch.isin(next_under_obj, context_classes)
+                    temporal_scores.append(next_context_mask.float().mean())
+
+            temporal_context_score = torch.stack(temporal_scores).mean()
+
+            if temporal_context_score < 0.1:
                 continue
 
             # ==============================
@@ -191,20 +254,20 @@ class SemanticKitti(Dataset):
             else:
                 continue
                 
-            # occ_th = self.get_occlusion_threshold(obj_cls)
+            occ_th = self.get_occlusion_threshold(obj_cls)
             
-            # # クラスごとの閾値で判定
-            # if overlap_ratio > occ_th:
-            #     continue
+            # クラスごとの閾値で判定
+            if overlap_ratio > occ_th:
+                continue
 
             #step3 一部だけ隠したcopy&paste
             visible_m2d = m2d & (~target_foreground)
             visible_ratio = visible_m2d.sum().float() / m2d.sum().float()
 
-            if visible_ratio < 0.2:
+            if visible_ratio < 0.3:
                 continue
 
-            if visible_ratio > 0.95 and torch.rand(1).item() > 0.7:
+            if visible_ratio > 0.95 and torch.rand(1).item() > 0.3:
                 continue
 
             m = visible_m2d.unsqueeze(0)
@@ -240,6 +303,17 @@ class SemanticKitti(Dataset):
 
     def __getitem__(self, index):
         pt_file = self.scan_files[index]
+        prev_labels_t = None
+        next_labels_t = None
+
+        do_copy_paste = self.is_train and torch.rand(1) > 0.25
+
+        if do_copy_paste:
+            prev_file = self.get_neighbor_file(pt_file, -1)
+            next_file = self.get_neighbor_file(pt_file, 1)
+
+            prev_labels_t = self.load_neighbor_label(prev_file)
+            next_labels_t = self.load_neighbor_label(next_file)
 
         with gzip.open(pt_file, 'rb') as f:
             data = torch.load(f, weights_only=True)
@@ -250,12 +324,13 @@ class SemanticKitti(Dataset):
 
         paste_mask_t = torch.zeros_like(mask_t).float()
 
-        if self.is_train and torch.rand(1) > 1.0:
+        if do_copy_paste:
             num_paste = np.random.randint(1, 4)  # 2〜4回試す
             max_paste_pixels = 1500
 
             for _ in range(num_paste):
-                proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t)
+                proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t,
+                                                                                                      prev_labels_t=prev_labels_t,next_labels_t=next_labels_t)
 
                 if paste_mask_new.sum() > 0:
                     proj_tensor = proj_tensor_new

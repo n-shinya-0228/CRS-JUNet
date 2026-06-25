@@ -9,6 +9,12 @@
   
   `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best_val.path --log logs/`
 
+  uv run python train.py \
+  --dataset SemanticKitti/ \
+  --arch_cfg config/arch/SJunNet_8ch_finetune.yaml \
+  --log logs/SJNet3_step1.5_offcp_ft \
+  --pretrained logs/SJNet3_step1.5/best_val.path
+
 - ほかのモデルをベースに学習
   
   `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml -p logs/a/best.path --log logs/BEV_`

@@ -157,7 +157,7 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_Polar4.py' # ファイル名変更
+        dataset_name = 'SemanticKitti_Polar7.py' # ファイル名変更
         trainer_name = 'trainer_Polar9.py'  # このファイル名
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
@@ -285,7 +285,7 @@ class Trainer():
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
             T_max=max(down_epochs, 1),
-            eta_min=self.ARCH["train"]["lr"] * 0.00001)
+            eta_min=self.ARCH["train"].get("min_lr", self.ARCH["train"]["lr"] * 0.00001))
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = 0.10
+        self.w_paste = 0.00
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)

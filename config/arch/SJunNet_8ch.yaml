@@ -5,7 +5,7 @@ train:
   # loss: "xentropy"       # must be either xentropy or iou
   loss: "focal_gamma"
   max_epochs: 100
-  lr: 0.003               # sgd learning rate
+  lr: 1.0e-4               # sgd learning rate
   min_lr: 2.0e-5
   wup_epochs: 3         # warmup during first XX epochs (can be float)
   cos_epochs: 97
@@ -18,7 +18,7 @@ train:
   epsilon_w: 0.01       # class weight w = 1 / (content + epsilon_w)
                          # sample images (one per batch of the last calculated batch)
                          # in log folder
-  workers: 4           # number of threads to get data
+  workers: 8           # number of threads to get data
 
 ################################################################################
 # backbone parameters
