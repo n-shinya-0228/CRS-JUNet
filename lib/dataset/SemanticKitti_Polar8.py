@@ -23,7 +23,7 @@ class SemanticKitti(Dataset):
 
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_512_prlb")
+            bev_path = os.path.join(self.root, seq, "polar_512_prlb_raw")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
@@ -41,6 +41,16 @@ class SemanticKitti(Dataset):
     def __len__(self):
         return len(self.scan_files)
     
+    def load_pt_file(self, pt_file):
+        with open(pt_file, "rb") as f:
+            magic = f.read(2)
+
+        if magic == b"\x1f\x8b":
+            with gzip.open(pt_file, "rb") as f:
+                return torch.load(f, map_location="cpu", weights_only=True)
+        else:
+            return torch.load(pt_file, map_location="cpu", weights_only=True)
+    
     def get_seq_frame(self, pt_file):
         path_norm = os.path.normpath(pt_file)
         parts = path_norm.split(os.sep)
@@ -51,7 +61,7 @@ class SemanticKitti(Dataset):
     def get_neighbor_file(self, pt_file, offset):
         seq, frame = self.get_seq_frame(pt_file)
         neighbor_name = f"{frame + offset:06d}.pt"
-        neighbor_file = os.path.join(self.root, seq, "polar_512_prlb", neighbor_name)
+        neighbor_file = os.path.join(self.root, seq, "polar_512_prlb_raw", neighbor_name)
 
         if os.path.exists(neighbor_file):
             return neighbor_file
@@ -63,8 +73,7 @@ class SemanticKitti(Dataset):
             return None
 
         try:
-            with gzip.open(pt_file, "rb") as f:
-                data = torch.load(f, map_location="cpu", weights_only=True)
+            data = self.load_pt_file(pt_file)
             return data["labels_t"].long()
         except Exception:
             return None
@@ -127,8 +136,7 @@ class SemanticKitti(Dataset):
             src_file = random.choice(self.bev_files)
 
             try:
-                with gzip.open(src_file, "rb") as f:
-                    src = torch.load(f, map_location="cpu", weights_only=True)
+                src = self.load_pt_file(src_file)
             except Exception:
                 continue
 
@@ -306,7 +314,7 @@ class SemanticKitti(Dataset):
         prev_labels_t = None
         next_labels_t = None
 
-        do_copy_paste = self.is_train and torch.rand(1) > 0.25
+        do_copy_paste = self.is_train and torch.rand(1) > 1
 
         if do_copy_paste:
             prev_file = self.get_neighbor_file(pt_file, -1)
@@ -315,8 +323,7 @@ class SemanticKitti(Dataset):
             prev_labels_t = self.load_neighbor_label(prev_file)
             next_labels_t = self.load_neighbor_label(next_file)
 
-        with gzip.open(pt_file, 'rb') as f:
-            data = torch.load(f, weights_only=True)
+        data = self.load_pt_file(pt_file)
 
         proj_tensor = data['proj_tensor'].float() # [7, H, W]
         mask_t = data['mask_t'].float()           # [1, H, W]

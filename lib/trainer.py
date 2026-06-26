@@ -285,7 +285,7 @@ class Trainer():
         cosine_scheduler = CosineAnnealingLR(
             optimizer=self.optimizer,
             T_max=max(down_epochs, 1),
-            eta_min=self.ARCH["train"]["lr"] * 0.00001)
+            eta_min=self.ARCH["train"].get("min_lr", self.ARCH["train"]["lr"] * 0.00001))
 
         self.scheduler = SequentialLR(
             optimizer=self.optimizer,
@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = 0.10
+        self.w_paste = 0.00
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
