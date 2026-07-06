@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from .SemanticKitti_Polar7 import SemanticKitti
+from .SemanticKitti_Polar9 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
@@ -59,6 +59,7 @@ class Parser:
         self.sensor = arch_cfg["dataset"]["sensor"]
         self.batch_size = arch_cfg["train"]["batch_size"]
         self.workers = arch_cfg["train"]["workers"]
+        self.copy_paste_prob = float(arch_cfg["train"].get("copy_paste_prob", 0.75))
         
         self.nclasses = len(self.learning_map_inv)
 
@@ -87,7 +88,7 @@ class Parser:
             root=self.root, sequences=self.train_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=True # ★ Data Augmentation をオンにする
+            gt=self.gt, is_train=True, copy_paste_prob=self.copy_paste_prob # ★ Data Augmentation をオンにする
         )
 
         self.trainloader = DataLoader(

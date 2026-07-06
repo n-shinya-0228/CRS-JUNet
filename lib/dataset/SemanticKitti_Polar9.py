@@ -10,7 +10,7 @@ class SemanticKitti(Dataset):
     def __init__(self, root, sequences, labels, color_map,
                  learning_map, learning_map_inv, sensor,
                  max_points=150000, gt=True, skip=0,
-                 is_train=False):
+                 is_train=False, copy_paste_prob=0.75):
         super().__init__()
         self.root = os.path.join(root, "sequences")
         self.sequences = [f"{int(s):02d}" for s in sequences]
@@ -20,6 +20,7 @@ class SemanticKitti(Dataset):
         self.learning_map_inv = learning_map_inv
         self.gt = gt
         self.is_train = is_train
+        self.copy_paste_prob = float(copy_paste_prob)
 
         self.scan_files = []
         for seq in self.sequences:
@@ -330,7 +331,7 @@ class SemanticKitti(Dataset):
         prev_labels_t = None
         next_labels_t = None
 
-        do_copy_paste = self.is_train and torch.rand(1) > 0.25
+        do_copy_paste = self.is_train and torch.rand(1).item() < self.copy_paste_prob
 
         if do_copy_paste:
             prev_file = self.get_neighbor_file(pt_file, -1)
