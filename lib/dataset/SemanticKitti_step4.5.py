@@ -10,7 +10,7 @@ class SemanticKitti(Dataset):
     def __init__(self, root, sequences, labels, color_map,
                  learning_map, learning_map_inv, sensor,
                  max_points=150000, gt=True, skip=0,
-                 is_train=False):
+                 is_train=False, copy_paste=True):
         super().__init__()
         self.root = os.path.join(root, "sequences")
         self.sequences = [f"{int(s):02d}" for s in sequences]
@@ -20,21 +20,64 @@ class SemanticKitti(Dataset):
         self.learning_map_inv = learning_map_inv
         self.gt = gt
         self.is_train = is_train
+        self.copy_paste = copy_paste
 
         self.scan_files = []
         for seq in self.sequences:
-            bev_path = os.path.join(self.root, seq, "polar_512_prlb")
+            bev_path = os.path.join(self.root, seq, "polar_512_prlb_raw")
             if os.path.exists(bev_path):
                 scans = [os.path.join(bev_path, f) for f in sorted(os.listdir(bev_path)) if f.endswith(".pt")]
                 self.scan_files += scans
+
+        self.file_to_index = {}
+        
+        for i, f in enumerate(self.scan_files):
+            self.file_to_index[f] = i
 
         if skip:
             self.scan_files = self.scan_files[::skip]
 
         self.bev_files = self.scan_files
 
+    def load_pt(self, pt_file):
+        with open(pt_file, "rb") as f:
+            magic = f.read(2)
+
+        if magic == b"\x1f\x8b":
+            with gzip.open(pt_file, "rb") as f:
+                return torch.load(f, map_location="cpu", weights_only=True)
+
+        return torch.load(pt_file, map_location="cpu", weights_only=True)
+
     def __len__(self):
         return len(self.scan_files)
+    
+    def get_seq_frame(self, pt_file):
+        path_norm = os.path.normpath(pt_file)
+        parts = path_norm.split(os.sep)
+        seq = parts[-3]
+        frame = int(parts[-1].replace(".pt", ""))
+        return seq, frame
+    
+    def get_neighbor_file(self, pt_file, offset):
+        seq, frame = self.get_seq_frame(pt_file)
+        neighbor_name = f"{frame + offset:06d}.pt"
+        neighbor_file = os.path.join(self.root, seq, "polar_512_prlb_raw", neighbor_name)
+
+        if os.path.exists(neighbor_file):
+            return neighbor_file
+        else:
+            return None
+        
+    def load_neighbor_label(self, pt_file):
+        if pt_file is None:
+            return None
+
+        try:
+            data = self.load_pt(pt_file)
+            return data["labels_t"].long()
+        except Exception:
+            return None
     
     def get_context_classes(self, obj_cls):
         """
@@ -77,7 +120,7 @@ class SemanticKitti(Dataset):
         else:
             return 0.3
     
-    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t):
+    def apply_bev_copy_paste(self, proj_tensor, mask_t, labels_t, prev_labels_t=None, next_labels_t=None):
         paste_mask_t = torch.zeros_like(mask_t).float()
 
         if len(self.bev_files) == 0:
@@ -94,8 +137,7 @@ class SemanticKitti(Dataset):
             src_file = random.choice(self.bev_files)
 
             try:
-                with gzip.open(src_file, "rb") as f:
-                    src = torch.load(f, map_location="cpu", weights_only=True)
+                src = self.load_pt(src_file)
             except Exception:
                 continue
 
@@ -130,9 +172,33 @@ class SemanticKitti(Dataset):
             patch_feat = src_feat[:, y1:y2, x1:x2]
             patch_label = src_label[y1:y2, x1:x2]
 
-            # patch内は選ばれたクラスだけ貼る
-            # これにより、bicycleを選んだのにpoleも一緒に貼る、みたいな混在を避ける
-            patch_obj_mask = ((patch_label == obj_cls) & (src_mask.squeeze(0)[y1:y2, x1:x2] > 0)).unsqueeze(0).float()
+            valid_src = src_mask.squeeze(0)[y1:y2, x1:x2] > 0
+
+            # bicyclist/motorcyclistは車体も一緒に貼る
+            if obj_cls == 7:
+                rider_mask = patch_label == 7
+                vehicle_mask = patch_label == 2
+
+                # bicycle がほとんど無いなら不自然なのでスキップ
+                if vehicle_mask.sum() < 5:
+                    continue
+
+                paste_mask = (rider_mask | vehicle_mask) & valid_src
+
+            elif obj_cls == 8:
+                rider_mask = patch_label == 8
+                vehicle_mask = patch_label == 3
+
+                # motorcycle がほとんど無いならスキップ
+                if vehicle_mask.sum() < 5:
+                    continue
+
+                paste_mask = (rider_mask | vehicle_mask) & valid_src
+
+            else:
+                paste_mask = (patch_label == obj_cls) & valid_src
+
+            patch_obj_mask = paste_mask.unsqueeze(0).float()
 
             _, h, w = patch_feat.shape
 
@@ -165,6 +231,36 @@ class SemanticKitti(Dataset):
 
             # Step2: クラスごとのcontext条件
             if context_mask.float().mean() < 0.1:
+                continue
+
+            # ==============================
+            # # Step4: Temporal context check
+            # # ==============================
+             
+            temporal_scores = []
+            # current frame
+            temporal_scores.append(context_mask.float().mean())
+            # previous frame
+            if prev_labels_t is not None:
+                prev_region = prev_labels_t[ty:ty+h, tx:tx+w]
+                prev_under_obj = prev_region[m2d]
+                
+                if prev_under_obj.numel() > 0:
+                    prev_context_mask = torch.isin(prev_under_obj, context_classes)
+                    temporal_scores.append(prev_context_mask.float().mean())
+
+            # next frame
+            if next_labels_t is not None:
+                next_region = next_labels_t[ty:ty+h, tx:tx+w]
+                next_under_obj = next_region[m2d]
+
+                if next_under_obj.numel() > 0:
+                    next_context_mask = torch.isin(next_under_obj, context_classes)
+                    temporal_scores.append(next_context_mask.float().mean())
+
+            temporal_context_score = torch.stack(temporal_scores).mean()
+
+            if temporal_context_score < 0.1:
                 continue
 
             # ==============================
@@ -240,9 +336,19 @@ class SemanticKitti(Dataset):
 
     def __getitem__(self, index):
         pt_file = self.scan_files[index]
+        prev_labels_t = None
+        next_labels_t = None
 
-        with gzip.open(pt_file, 'rb') as f:
-            data = torch.load(f, weights_only=True)
+        do_copy_paste = self.is_train and self.copy_paste and torch.rand(1) > 0.25
+
+        if do_copy_paste:
+            prev_file = self.get_neighbor_file(pt_file, -1)
+            next_file = self.get_neighbor_file(pt_file, 1)
+
+            prev_labels_t = self.load_neighbor_label(prev_file)
+            next_labels_t = self.load_neighbor_label(next_file)
+
+        data = self.load_pt(pt_file)
 
         proj_tensor = data['proj_tensor'].float() # [7, H, W]
         mask_t = data['mask_t'].float()           # [1, H, W]
@@ -250,12 +356,13 @@ class SemanticKitti(Dataset):
 
         paste_mask_t = torch.zeros_like(mask_t).float()
 
-        if self.is_train and torch.rand(1) > 0.25:
+        if do_copy_paste:
             num_paste = np.random.randint(1, 4)  # 2〜4回試す
             max_paste_pixels = 1500
 
             for _ in range(num_paste):
-                proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t)
+                proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t,
+                                                                                                      prev_labels_t=prev_labels_t,next_labels_t=next_labels_t)
 
                 if paste_mask_new.sum() > 0:
                     proj_tensor = proj_tensor_new

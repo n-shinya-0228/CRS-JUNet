@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from .SemanticKitti_Polar8 import SemanticKitti
+from .SemanticKitti_Polar9 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
@@ -59,6 +59,7 @@ class Parser:
         self.sensor = arch_cfg["dataset"]["sensor"]
         self.batch_size = arch_cfg["train"]["batch_size"]
         self.workers = arch_cfg["train"]["workers"]
+        self.copy_paste = bool(arch_cfg["train"].get("copy_paste", True))
         
         self.nclasses = len(self.learning_map_inv)
 
@@ -87,7 +88,7 @@ class Parser:
             root=self.root, sequences=self.train_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=True # ★ Data Augmentation をオンにする
+            gt=self.gt, is_train=True, copy_paste=self.copy_paste # ★ Data Augmentation をオンにする
         )
 
         self.trainloader = DataLoader(
@@ -101,7 +102,7 @@ class Parser:
             root=self.root, sequences=self.valid_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=False # ★ 検証時は Augmentation オフ
+            gt=self.gt, is_train=False, copy_paste=False # ★ 検証時は Augmentation オフ
         )
 
         self.validloader = DataLoader(
@@ -129,7 +130,7 @@ class Parser:
                 root=self.root, sequences=self.test_sequences, labels=self.labels,
                 color_map=self.color_map, learning_map=self.learning_map,
                 learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-                gt=False, is_train=False
+                gt=False, is_train=False, copy_paste=False
             )
             self.testloader = DataLoader(
                 self.test_dataset,shuffle=False,drop_last=False,**test_loader_kwargs
