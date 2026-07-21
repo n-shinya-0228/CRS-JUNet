@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = 0.00
+        self.w_paste = 0.0
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)

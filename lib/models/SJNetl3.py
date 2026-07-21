@@ -500,7 +500,7 @@ class SJNetl3(nn.Module):
         in_channels: int = 7,     
         nclasses: int = 20,
         drop: float = 0.3,
-        base_ch: int = 48,
+        base_ch: int = 32,
         aspp_out: int = 256,
         swa_heads: int = 4,
         swa_window: Tuple[int, int] = (8, 8),

@@ -76,15 +76,15 @@ class SemanticKitti(Dataset):
         return: torch.Tensor of allowed context classes
         """
 
-        # bicycle, motorcycle, truck, other-vehicle
+        # bicycle, motorcycle, truck, other-vehicle, motorcyclist
         # 車両系は road / parking に貼る
-        if obj_cls in [2, 3, 4, 5]:
+        if obj_cls in [2, 3, 4, 5, 8]:
             return torch.tensor([9, 10], dtype=torch.long)
 
-        # person, bicyclist, motorcyclist
-        # 人・乗車人物系は sidewalk / road に貼る
-        elif obj_cls in [6, 7, 8]:
-            return torch.tensor([11, 9], dtype=torch.long)
+        # person, bicyclist
+        # 人・乗車人物系は sidewalk に貼る
+        elif obj_cls in [6, 7]:
+            return torch.tensor([11], dtype=torch.long)
 
         # pole, traffic-sign
         # 静的な小物体は sidewalk / road / terrain に貼る
@@ -166,6 +166,7 @@ class SemanticKitti(Dataset):
 
             valid_src = src_mask.squeeze(0)[y1:y2, x1:x2] > 0
 
+            #step4.5
             # bicyclist/motorcyclistは車体も一緒に貼る
             if obj_cls == 7:
                 rider_mask = patch_label == 7
@@ -177,15 +178,15 @@ class SemanticKitti(Dataset):
 
                 paste_mask = (rider_mask | vehicle_mask) & valid_src
 
-            elif obj_cls == 8:
-                rider_mask = patch_label == 8
-                vehicle_mask = patch_label == 3
+            # elif obj_cls == 8:
+            #     rider_mask = patch_label == 8
+            #     vehicle_mask = patch_label == 3
 
-                # motorcycle がほとんど無いならスキップ
-                if vehicle_mask.sum() < 5:
-                    continue
+            #     # motorcycle がほとんど無いならスキップ
+            #     if vehicle_mask.sum() < 5:
+            #         continue
 
-                paste_mask = (rider_mask | vehicle_mask) & valid_src
+            #     paste_mask = (rider_mask | vehicle_mask) & valid_src
 
             else:
                 paste_mask = (patch_label == obj_cls) & valid_src
@@ -350,7 +351,7 @@ class SemanticKitti(Dataset):
         paste_mask_t = torch.zeros_like(mask_t).float()
 
         if do_copy_paste:
-            num_paste = np.random.randint(1, 4)  # 2〜4回試す
+            num_paste = np.random.randint(2, 4)  # 2〜4回試す
             max_paste_pixels = 1500
 
             for _ in range(num_paste):
