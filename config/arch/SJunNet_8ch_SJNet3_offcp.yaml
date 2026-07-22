@@ -19,6 +19,7 @@ train:
                          # sample images (one per batch of the last calculated batch)
                          # in log folder
   workers: 4           # number of threads to get data
+  copy_paste: False
 
 ################################################################################
 # backbone parameters

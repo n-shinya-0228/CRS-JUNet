@@ -332,8 +332,8 @@ class SemanticKitti(Dataset):
         paste_mask_t = torch.zeros_like(mask_t).float()
 
         if do_copy_paste:
-            num_paste = np.random.randint(1, 4)  # 2〜4回試す
-            max_paste_pixels = 1500
+            num_paste = np.random.randint(2, 5)  # 2〜4回試す
+            max_paste_pixels = 2000
 
             for _ in range(num_paste):
                 proj_tensor_new, mask_t_new, labels_t_new, paste_mask_new = self.apply_bev_copy_paste(proj_tensor, mask_t, labels_t,
