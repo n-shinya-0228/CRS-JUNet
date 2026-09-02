@@ -821,6 +821,7 @@ def main():
     )
 
     best_miou = -1.0
+    best_small_miou = -1.0
 
     print("\n================================")
     print("Polar Point Encoder Pretraining")
@@ -965,6 +966,24 @@ def main():
 
             print_class_iou(
                 metrics["iou"]
+            )
+
+        if small_miou > best_small_miou:
+            best_small_miou = small_miou
+
+            torch.save(
+                model.encoder.state_dict(),
+                save_dir / "best_small_point_encoder.pth",
+            )
+
+            torch.save(
+                last_ckpt,
+                save_dir / "best_small_point_pretrain_full.pth",
+            )
+
+            print(
+                f"[BEST SMALL] small mIoU = "
+                f"{100.0 * best_small_miou:.2f}%"
             )
 
         print()
