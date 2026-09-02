@@ -5,6 +5,7 @@ Step 2: Context-aware Copy-Paste
 Step 3: Occlusion-aware Copy-Paste
 Step 3.5: Visibility-ratio aware Copy-Paste
 Step 4: Temporal-consistent Copy-Paste
+step 4.5:Rider-vehicle pair
 Step 5: Visibility-aware Loss / Feature Learning
 Step 6: Temporal Consistency Loss
 

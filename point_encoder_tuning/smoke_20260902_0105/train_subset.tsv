@@ -1,0 +1,3 @@
+sequence	frame	bin_path	label_path
+02	003579	SemanticKitti/sequences/02/velodyne/003579.bin	SemanticKitti/sequences/02/polar_512_prlb/003579.pt
+06	000474	SemanticKitti/sequences/06/velodyne/000474.bin	SemanticKitti/sequences/06/polar_512_prlb/000474.pt

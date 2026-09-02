@@ -157,8 +157,8 @@ class Trainer():
 
         model_name = self.ARCH['model']['name']
         model_py_path = osp.join('lib', 'models', f"{model_name}.py")
-        dataset_name = 'SemanticKitti_step4_5.py'
-        trainer_name = 'trainer.py'
+        dataset_name = 'SemanticKitti_Polar9.py' # ファイル名変更
+        trainer_name = 'trainer_Polar9.py'  # このファイル名
         dataset_py_path = osp.join('lib', 'dataset', dataset_name)
 
         used_files_txt = osp.join(self.log, 'used_files.txt')
@@ -334,7 +334,7 @@ class Trainer():
         self.w_aux8 = 0.10
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
-        self.w_paste = 0.00
+        self.w_paste = 0.0
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)

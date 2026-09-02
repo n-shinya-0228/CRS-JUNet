@@ -114,8 +114,8 @@ if __name__ == '__main__':
 
   # does model folder exist?
   if FLAGS.pretrained is not None:      #指定された事前学習モデルのフォルダが存在するかチェック。
-    if os.path.isdir(FLAGS.pretrained):
-      logger.info("model folder exists! Using model from %s" % (FLAGS.pretrained))
+    if os.path.isdir(FLAGS.pretrained) or os.path.isfile(FLAGS.pretrained):
+      logger.info("pretrained path exists! Using model from %s" % (FLAGS.pretrained))
     else:
       logger.warning("model folder doesnt exist! Start with random weights...")
   else:
