@@ -1,0 +1,167 @@
+{
+  "cell_sampling": "class_balanced",
+  "classes": [
+    {
+      "after_cells": 0,
+      "before_cells": 593004,
+      "class_id": 0,
+      "class_name": "unlabeled",
+      "retained_percent": 0.0,
+      "retained_ratio": 0.0
+    },
+    {
+      "after_cells": 871035,
+      "before_cells": 1249944,
+      "class_id": 1,
+      "class_name": "car",
+      "retained_percent": 69.68592192930242,
+      "retained_ratio": 0.6968592192930243
+    },
+    {
+      "after_cells": 11157,
+      "before_cells": 11157,
+      "class_id": 2,
+      "class_name": "bicycle",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 9303,
+      "before_cells": 9303,
+      "class_id": 3,
+      "class_name": "motorcycle",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 49707,
+      "before_cells": 51270,
+      "class_id": 4,
+      "class_name": "truck",
+      "retained_percent": 96.95143358689292,
+      "retained_ratio": 0.9695143358689292
+    },
+    {
+      "after_cells": 50076,
+      "before_cells": 53355,
+      "class_id": 5,
+      "class_name": "other-vehicle",
+      "retained_percent": 93.85437166151252,
+      "retained_ratio": 0.9385437166151251
+    },
+    {
+      "after_cells": 9144,
+      "before_cells": 9144,
+      "class_id": 6,
+      "class_name": "person",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 4476,
+      "before_cells": 4476,
+      "class_id": 7,
+      "class_name": "bicyclist",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 1827,
+      "before_cells": 1827,
+      "class_id": 8,
+      "class_name": "motorcyclist",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 1500000,
+      "before_cells": 10556211,
+      "class_id": 9,
+      "class_name": "road",
+      "retained_percent": 14.20964397168643,
+      "retained_ratio": 0.1420964397168643
+    },
+    {
+      "after_cells": 427902,
+      "before_cells": 864516,
+      "class_id": 10,
+      "class_name": "parking",
+      "retained_percent": 49.496134253154366,
+      "retained_ratio": 0.49496134253154367
+    },
+    {
+      "after_cells": 1429572,
+      "before_cells": 7933488,
+      "class_id": 11,
+      "class_name": "sidewalk",
+      "retained_percent": 18.019463822217922,
+      "retained_ratio": 0.1801946382221792
+    },
+    {
+      "after_cells": 114948,
+      "before_cells": 238497,
+      "class_id": 12,
+      "class_name": "other-ground",
+      "retained_percent": 48.19683266456182,
+      "retained_ratio": 0.4819683266456182
+    },
+    {
+      "after_cells": 1216542,
+      "before_cells": 2384061,
+      "class_id": 13,
+      "class_name": "building",
+      "retained_percent": 51.02814063901888,
+      "retained_ratio": 0.5102814063901888
+    },
+    {
+      "after_cells": 1022199,
+      "before_cells": 1591260,
+      "class_id": 14,
+      "class_name": "fence",
+      "retained_percent": 64.23833942913163,
+      "retained_ratio": 0.6423833942913163
+    },
+    {
+      "after_cells": 1499355,
+      "before_cells": 10609857,
+      "class_id": 15,
+      "class_name": "vegetation",
+      "retained_percent": 14.131717326633147,
+      "retained_ratio": 0.14131717326633148
+    },
+    {
+      "after_cells": 141816,
+      "before_cells": 141816,
+      "class_id": 16,
+      "class_name": "trunk",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 1115313,
+      "before_cells": 5764293,
+      "class_id": 17,
+      "class_name": "terrain",
+      "retained_percent": 19.348652124380212,
+      "retained_ratio": 0.19348652124380214
+    },
+    {
+      "after_cells": 61455,
+      "before_cells": 61455,
+      "class_id": 18,
+      "class_name": "pole",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    },
+    {
+      "after_cells": 21075,
+      "before_cells": 21075,
+      "class_id": 19,
+      "class_name": "traffic-sign",
+      "retained_percent": 100.0,
+      "retained_ratio": 1.0
+    }
+  ],
+  "completed_epochs": 3,
+  "majority_cell_cap": 1000
+}

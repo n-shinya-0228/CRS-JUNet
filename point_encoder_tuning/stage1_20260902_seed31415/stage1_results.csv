@@ -1,0 +1,7 @@
+experiment,epsilon,core_boost,pole_sign_boost,learning_rate,best_epoch,val_mIoU_percent,val_Acc_percent,small_mIoU_percent,core_small_mIoU_percent,core_positive_classes,bicycle_IoU_percent,motorcycle_IoU_percent,person_IoU_percent,bicyclist_IoU_percent,motorcyclist_IoU_percent,pole_IoU_percent,traffic_sign_IoU_percent
+exp_001_control,1.2,1.0,1.0,0.001,3,14.1646,63.0455,0.0038,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,0.0214,0.0055
+exp_002_core1p5,1.2,1.5,1.25,0.001,3,14.3685,63.2800,0.4269,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,0.0619,2.9263
+exp_003_core2p0,1.2,2.0,1.5,0.001,3,14.3494,63.2579,0.4291,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,0.0896,2.9143
+exp_004_core2p5,1.2,2.5,1.5,0.001,3,14.3979,63.3440,0.4947,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,0.0896,3.3735
+exp_005_eps1p10,1.1,2.0,1.5,0.001,3,14.4869,62.5289,0.9063,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,0.5173,5.8264
+exp_006_eps1p05,1.05,2.0,1.5,0.001,3,14.5044,60.9298,1.7672,0.0000,0,0.0000,0.0000,0.0000,0.0000,0.0000,1.1703,11.2004

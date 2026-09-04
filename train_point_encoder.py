@@ -1,5 +1,8 @@
 import argparse
+import csv
 import gzip
+import hashlib
+import json
 import os
 import random
 from pathlib import Path
@@ -42,6 +45,7 @@ CLASS_NAMES = [
 
 # 今の研究で特に見たい小物体クラス
 SMALL_CLASSES = [2, 3, 6, 7, 8, 18, 19]
+CORE_SMALL_CLASSES = [2, 3, 6, 7, 8]
 
 
 def set_seed(seed: int):
@@ -277,6 +281,267 @@ def single_item_collate(batch):
     return batch[0]
 
 
+def select_fixed_subset(dataset, sample_count, seed):
+    if sample_count <= 0 or sample_count >= len(dataset.samples):
+        return
+
+    rng = random.Random(seed)
+    selected_indices = sorted(
+        rng.sample(range(len(dataset.samples)), sample_count)
+    )
+    dataset.samples = [dataset.samples[i] for i in selected_indices]
+
+
+def write_subset_manifest(dataset, path):
+    with open(path, "w") as f:
+        f.write("sequence\tframe\tbin_path\tlabel_path\n")
+        for bin_path, label_path, sequence, frame in dataset.samples:
+            f.write(
+                f"{sequence}\t{frame}\t{bin_path}\t{label_path}\n"
+            )
+
+
+def load_subset_manifest(dataset, path):
+    """Reuse an existing subset exactly, keyed by sequence and frame."""
+    manifest_path = Path(path)
+    sample_by_key = {
+        (sequence, frame): sample
+        for sample in dataset.samples
+        for _, _, sequence, frame in [sample]
+    }
+
+    selected_samples = []
+    seen = set()
+    with open(manifest_path, "r", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        required = {"sequence", "frame"}
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise RuntimeError(
+                f"Invalid subset manifest header: {manifest_path}"
+            )
+
+        for row in reader:
+            key = (f"{int(row['sequence']):02d}", row["frame"])
+            if key in seen:
+                raise RuntimeError(
+                    f"Duplicate sample in subset manifest: {key}"
+                )
+            if key not in sample_by_key:
+                raise RuntimeError(
+                    f"Manifest sample is unavailable in {dataset.split}: {key}"
+                )
+            selected_samples.append(sample_by_key[key])
+            seen.add(key)
+
+    if not selected_samples:
+        raise RuntimeError(f"Subset manifest is empty: {manifest_path}")
+
+    dataset.samples = selected_samples
+
+
+def _stable_sampling_seed(seed, epoch, sequence, frame, class_id):
+    payload = f"{seed}|{epoch}|{sequence}|{frame}|{class_id}".encode("utf-8")
+    digest = hashlib.sha256(payload).digest()
+    return int.from_bytes(digest[:8], byteorder="little") % (2**63 - 1)
+
+
+def select_balanced_cell_indices(
+    target,
+    majority_cell_cap,
+    small_classes,
+    seed,
+    epoch,
+    sequence,
+    frame,
+):
+    """Select loss cells while retaining every nonzero small-class cell."""
+    if target.ndim != 1:
+        raise ValueError(f"target must be 1-D, got shape={tuple(target.shape)}")
+    if majority_cell_cap <= 0:
+        raise ValueError("majority_cell_cap must be greater than zero")
+
+    target_cpu = target.detach().cpu()
+    small_class_ids = {int(class_id) for class_id in small_classes}
+    selected = []
+
+    for class_id_tensor in torch.unique(target_cpu, sorted=True):
+        class_id = int(class_id_tensor.item())
+        if class_id == 0:
+            continue
+
+        class_indices = torch.nonzero(
+            target_cpu == class_id,
+            as_tuple=False,
+        ).flatten()
+
+        if (
+            class_id not in small_class_ids
+            and class_indices.numel() > majority_cell_cap
+        ):
+            generator = torch.Generator(device="cpu")
+            generator.manual_seed(
+                _stable_sampling_seed(
+                    seed=seed,
+                    epoch=epoch,
+                    sequence=sequence,
+                    frame=frame,
+                    class_id=class_id,
+                )
+            )
+            permutation = torch.randperm(
+                class_indices.numel(),
+                generator=generator,
+            )[:majority_cell_cap]
+            class_indices = class_indices[permutation]
+
+        selected.append(class_indices)
+
+    if not selected:
+        return torch.empty(0, dtype=torch.long, device=target.device)
+
+    selected_indices = torch.cat(selected).sort().values
+    return selected_indices.to(target.device, non_blocking=True)
+
+
+def select_loss_cell_indices(
+    target,
+    cell_sampling,
+    majority_cell_cap,
+    small_classes,
+    seed,
+    epoch,
+    sequence,
+    frame,
+):
+    if cell_sampling == "none":
+        return torch.nonzero(target != 0, as_tuple=False).flatten()
+    if cell_sampling == "class_balanced":
+        return select_balanced_cell_indices(
+            target=target,
+            majority_cell_cap=majority_cell_cap,
+            small_classes=small_classes,
+            seed=seed,
+            epoch=epoch,
+            sequence=sequence,
+            frame=frame,
+        )
+    raise ValueError(f"Unknown cell_sampling mode: {cell_sampling}")
+
+
+def empty_cell_sampling_stats(num_classes):
+    return {
+        "before": torch.zeros(num_classes, dtype=torch.long),
+        "after": torch.zeros(num_classes, dtype=torch.long),
+    }
+
+
+def update_cell_sampling_stats(
+    stats,
+    target,
+    selected_indices,
+    num_classes,
+):
+    target_cpu = target.detach().cpu()
+    before = torch.bincount(
+        target_cpu,
+        minlength=num_classes,
+    )[:num_classes]
+
+    selected_target = target.index_select(0, selected_indices).detach().cpu()
+    after = torch.bincount(
+        selected_target,
+        minlength=num_classes,
+    )[:num_classes]
+
+    stats["before"] += before
+    stats["after"] += after
+
+
+def merge_cell_sampling_stats(destination, source):
+    destination["before"] += source["before"]
+    destination["after"] += source["after"]
+
+
+def cell_sampling_rows(stats):
+    rows = []
+    for class_id in range(len(stats["before"])):
+        before = int(stats["before"][class_id].item())
+        after = int(stats["after"][class_id].item())
+        retained_ratio = after / before if before > 0 else None
+        rows.append({
+            "class_id": class_id,
+            "class_name": (
+                CLASS_NAMES[class_id]
+                if class_id < len(CLASS_NAMES)
+                else str(class_id)
+            ),
+            "before_cells": before,
+            "after_cells": after,
+            "retained_ratio": retained_ratio,
+            "retained_percent": (
+                100.0 * retained_ratio
+                if retained_ratio is not None
+                else None
+            ),
+        })
+    return rows
+
+
+def save_cell_sampling_stats(
+    save_dir,
+    stats,
+    cell_sampling,
+    majority_cell_cap,
+    completed_epochs,
+):
+    rows = cell_sampling_rows(stats)
+    payload = {
+        "cell_sampling": cell_sampling,
+        "majority_cell_cap": (
+            majority_cell_cap
+            if cell_sampling == "class_balanced"
+            else None
+        ),
+        "completed_epochs": completed_epochs,
+        "classes": rows,
+    }
+    save_json(save_dir / "cell_sampling_stats.json", payload)
+
+    with open(save_dir / "cell_sampling_stats.csv", "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "class_id",
+                "class_name",
+                "before_cells",
+                "after_cells",
+                "retained_ratio",
+                "retained_percent",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return payload
+
+
+def print_cell_sampling_stats(stats):
+    print("\nTraining cell sampling summary:")
+    print(f"  {'class':15s} {'before':>12s} {'after':>12s} {'retained':>10s}")
+    for row in cell_sampling_rows(stats):
+        retained = (
+            f"{row['retained_percent']:.2f}%"
+            if row["retained_percent"] is not None
+            else "N/A"
+        )
+        print(
+            f"  {row['class_name']:15s} "
+            f"{row['before_cells']:12d} "
+            f"{row['after_cells']:12d} "
+            f"{retained:>10s}"
+        )
+
+
 def update_confusion(confusion, pred, target, num_classes):
     valid = target != 0
 
@@ -342,11 +607,33 @@ def metrics_from_confusion(confusion):
         else 0.0
     )
 
+    core_small_values = []
+    core_small_positive = 0
+    core_small_above_one_percent = 0
+    for c in CORE_SMALL_CLASSES:
+        if c < len(iou) and torch.isfinite(iou[c]):
+            core_small_values.append(iou[c])
+            if iou[c] > 0:
+                core_small_positive += 1
+            if iou[c] > 0.01:
+                core_small_above_one_percent += 1
+
+    core_small_miou = (
+        torch.stack(core_small_values).mean().item()
+        if len(core_small_values) > 0
+        else 0.0
+    )
+
     return {
         "iou": iou,
         "miou": miou,
         "accuracy": accuracy,
         "small_miou": small_miou,
+        "core_small_miou": core_small_miou,
+        "core_small_positive_classes": core_small_positive,
+        "core_small_above_one_percent_classes": (
+            core_small_above_one_percent
+        ),
     }
 
 
@@ -361,11 +648,16 @@ def train_one_epoch(
     H,
     W,
     max_radius,
+    cell_sampling,
+    majority_cell_cap,
+    cell_sampling_seed,
+    epoch,
 ):
     model.train()
 
     total_loss = 0.0
     valid_steps = 0
+    sampling_stats = empty_cell_sampling_stats(num_classes)
 
     pbar = tqdm(loader, desc="Train", leave=False)
 
@@ -409,14 +701,34 @@ def train_one_epoch(
                 f"logits={tuple(logits.shape)}, target={tuple(target.shape)}"
             )
 
-        valid = target != 0
-        if not torch.any(valid):
+        selected_indices = select_loss_cell_indices(
+            target=target,
+            cell_sampling=cell_sampling,
+            majority_cell_cap=majority_cell_cap,
+            small_classes=SMALL_CLASSES,
+            seed=cell_sampling_seed,
+            epoch=epoch,
+            sequence=batch["seq"],
+            frame=batch["frame"],
+        )
+        update_cell_sampling_stats(
+            stats=sampling_stats,
+            target=target,
+            selected_indices=selected_indices,
+            num_classes=num_classes,
+        )
+
+        if selected_indices.numel() == 0:
             continue
 
-        loss = criterion(
-            logits,
-            target,
-        )
+        if cell_sampling == "none":
+            # Keep the legacy loss path exactly; class 0 is ignored by criterion.
+            loss = criterion(logits, target)
+        else:
+            loss = criterion(
+                logits.index_select(0, selected_indices),
+                target.index_select(0, selected_indices),
+            )
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -435,9 +747,10 @@ def train_one_epoch(
         pbar.set_postfix(
             loss=f"{loss.item():.4f}",
             cells=int(unique_cells.numel()),
+            loss_cells=int(selected_indices.numel()),
         )
 
-    return total_loss / max(valid_steps, 1)
+    return total_loss / max(valid_steps, 1), sampling_stats
 
 
 @torch.no_grad()
@@ -545,7 +858,8 @@ def print_class_iou(iou):
 def build_class_weights(
     data_cfg,
     num_classes=20,
-    epsilon=1.2
+    epsilon=1.2,
+    small_boost=None,
 ):
     """
     SemanticKITTI yaml の content と learning_map から
@@ -556,6 +870,9 @@ def build_class_weights(
 
     class 0 は ignore なので weight=0
     """
+
+    if epsilon <= 1.0:
+        raise ValueError("class_weight_epsilon must be greater than 1.0")
 
     content = data_cfg["content"]
     learning_map = data_cfg["learning_map"]
@@ -599,7 +916,7 @@ def build_class_weights(
                 )
             )
 
-    # class 0はignore
+    # class 0 は ignore
     weights[0] = 0.0
 
     # class 1～19の平均weightを1にする
@@ -609,9 +926,57 @@ def build_class_weights(
         weights[1:][valid].mean()
     )
 
+    # -------------------------
+    # Small-class boost
+    # -------------------------
+    if small_boost is None:
+        small_boost = {
+            2: 2.0,   # bicycle
+            3: 2.0,   # motorcycle
+            6: 2.0,   # person
+            7: 2.0,   # bicyclist
+            8: 2.0,   # motorcyclist
+            18: 1.5,  # pole
+            19: 1.5,  # traffic-sign
+        }
+
+    for c, boost in small_boost.items():
+        weights[c] *= boost
+
     return torch.tensor(
         weights,
         dtype=torch.float32
+    )
+
+
+def serializable_iou(iou):
+    result = {}
+    for class_id in range(1, min(len(iou), len(CLASS_NAMES))):
+        value = iou[class_id]
+        result[CLASS_NAMES[class_id]] = (
+            value.item() if torch.isfinite(value) else None
+        )
+    return result
+
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+
+
+def append_jsonl(path, data):
+    with open(path, "a") as f:
+        f.write(json.dumps(data, sort_keys=True) + "\n")
+
+
+def stage2a_record_key(record):
+    return (
+        record["core_small_positive_classes"],
+        record["core_small_miou"],
+        record["core_small_above_one_percent_classes"],
+        record["small_miou"],
+        record["val_miou"],
+        record["val_accuracy"],
     )
 
 def main():
@@ -643,6 +1008,13 @@ def main():
         "--save_dir",
         type=str,
         default="point_encoder_runs",
+    )
+
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default=None,
+        help="Result filesに記録する実験名。省略時はsave_dir名を使う",
     )
 
     parser.add_argument(
@@ -682,6 +1054,62 @@ def main():
     )
 
     parser.add_argument(
+        "--subset_seed",
+        type=int,
+        default=42,
+        help="train/valid固定ランダムsubsetのseed",
+    )
+
+    parser.add_argument(
+        "--train_manifest",
+        type=str,
+        default=None,
+        help="既存のtrain_subset.tsvを順序ごと再利用する",
+    )
+
+    parser.add_argument(
+        "--valid_manifest",
+        type=str,
+        default=None,
+        help="既存のvalid_subset.tsvを順序ごと再利用する",
+    )
+
+    parser.add_argument(
+        "--cell_sampling",
+        choices=["none", "class_balanced"],
+        default="none",
+        help="training lossへ使用するoccupied cellのsampling方法",
+    )
+
+    parser.add_argument(
+        "--majority_cell_cap",
+        type=int,
+        default=2000,
+        help="class_balanced時のscan内・majority class別cell上限",
+    )
+
+    parser.add_argument(
+        "--cell_sampling_seed",
+        type=int,
+        default=None,
+        help="sampling専用seed。省略時は--seedを使用する",
+    )
+
+    parser.add_argument(
+        "--class_weight_epsilon",
+        type=float,
+        default=1.2,
+    )
+
+    parser.add_argument("--boost_bicycle", type=float, default=2.0)
+    parser.add_argument("--boost_motorcycle", type=float, default=2.0)
+    parser.add_argument("--boost_person", type=float, default=2.0)
+    parser.add_argument("--boost_bicyclist", type=float, default=2.0)
+    parser.add_argument("--boost_motorcyclist", type=float, default=2.0)
+    parser.add_argument("--boost_pole", type=float, default=1.5)
+    parser.add_argument("--boost_traffic_sign", type=float, default=1.5)
+
+    parser.add_argument(
         "--H",
         type=int,
         default=512,
@@ -703,10 +1131,42 @@ def main():
         "--debug_samples",
         type=int,
         default=0,
-        help=">0ならtrain/validを先頭N件だけ使う",
+        help=">0ならtrain/validから固定seedでN件選ぶ（後方互換用）",
+    )
+
+    parser.add_argument(
+        "--debug_train_samples",
+        type=int,
+        default=0,
+        help=">0ならtrain split全体から固定seedでN件選ぶ",
+    )
+
+    parser.add_argument(
+        "--debug_valid_samples",
+        type=int,
+        default=0,
+        help=">0ならvalid split全体から固定seedでN件選ぶ",
     )
 
     args = parser.parse_args()
+
+    if args.cell_sampling == "class_balanced" and args.majority_cell_cap <= 0:
+        parser.error("--majority_cell_cap must be greater than zero")
+    if args.cell_sampling_seed is None:
+        args.cell_sampling_seed = args.seed
+
+    if args.train_manifest and (
+        args.debug_samples > 0 or args.debug_train_samples > 0
+    ):
+        parser.error(
+            "--train_manifest cannot be combined with train debug sampling"
+        )
+    if args.valid_manifest and (
+        args.debug_samples > 0 or args.debug_valid_samples > 0
+    ):
+        parser.error(
+            "--valid_manifest cannot be combined with valid debug sampling"
+        )
 
     set_seed(args.seed)
 
@@ -716,6 +1176,12 @@ def main():
         )
 
     device = torch.device("cuda")
+
+    save_dir = Path(args.save_dir)
+    save_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     with open(args.data_cfg, "r") as f:
         data_cfg = yaml.safe_load(f)
@@ -750,23 +1216,61 @@ def main():
         W=args.W,
     )
 
-    if args.debug_samples > 0:
-        train_dataset.samples = train_dataset.samples[
-            :args.debug_samples
-        ]
-        valid_dataset.samples = valid_dataset.samples[
-            :args.debug_samples
-        ]
+    train_sample_count = (
+        args.debug_train_samples
+        if args.debug_train_samples > 0
+        else args.debug_samples
+    )
+    valid_sample_count = (
+        args.debug_valid_samples
+        if args.debug_valid_samples > 0
+        else args.debug_samples
+    )
 
+    if args.train_manifest:
+        load_subset_manifest(train_dataset, args.train_manifest)
+    else:
+        select_fixed_subset(
+            train_dataset,
+            train_sample_count,
+            args.subset_seed,
+        )
+
+    if args.valid_manifest:
+        load_subset_manifest(valid_dataset, args.valid_manifest)
+    else:
+        select_fixed_subset(
+            valid_dataset,
+            valid_sample_count,
+            args.subset_seed + 1,
+        )
+
+    write_subset_manifest(
+        train_dataset,
+        save_dir / "train_subset.tsv",
+    )
+    write_subset_manifest(
+        valid_dataset,
+        save_dir / "valid_subset.tsv",
+    )
+
+    if train_sample_count > 0 or valid_sample_count > 0:
         print(
-            f"[DEBUG] train={len(train_dataset)}, "
-            f"valid={len(valid_dataset)}"
+            f"[DEBUG] fixed random subset seed={args.subset_seed}: "
+            f"train={len(train_dataset)}, valid={len(valid_dataset)}"
+        )
+    if args.train_manifest or args.valid_manifest:
+        print(
+            "[MANIFEST] reused subsets: "
+            f"train={args.train_manifest or 'generated'}, "
+            f"valid={args.valid_manifest or 'generated'}"
         )
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=1,
         shuffle=True,
+        generator=torch.Generator().manual_seed(args.seed),
         num_workers=args.num_workers,
         pin_memory=True,
         collate_fn=single_item_collate,
@@ -791,7 +1295,17 @@ def main():
 
     class_weights = build_class_weights(
         data_cfg,
-        num_classes=num_classes
+        num_classes=num_classes,
+        epsilon=args.class_weight_epsilon,
+        small_boost={
+            2: args.boost_bicycle,
+            3: args.boost_motorcycle,
+            6: args.boost_person,
+            7: args.boost_bicyclist,
+            8: args.boost_motorcyclist,
+            18: args.boost_pole,
+            19: args.boost_traffic_sign,
+        },
     ).to(device)
 
     print("\nClass weights:")
@@ -814,14 +1328,56 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    save_dir = Path(args.save_dir)
-    save_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
     best_miou = -1.0
     best_small_miou = -1.0
+    best_core_small_miou = -1.0
+    best_overall_record = None
+    best_small_record = None
+    best_core_small_record = None
+    best_stage2a_record = None
+    cumulative_sampling_stats = empty_cell_sampling_stats(num_classes)
+    sampling_stats_payload = None
+
+    experiment_name = args.experiment_name or save_dir.name
+    boost_config = {
+        "bicycle": args.boost_bicycle,
+        "motorcycle": args.boost_motorcycle,
+        "person": args.boost_person,
+        "bicyclist": args.boost_bicyclist,
+        "motorcyclist": args.boost_motorcyclist,
+        "pole": args.boost_pole,
+        "traffic-sign": args.boost_traffic_sign,
+    }
+    run_config = {
+        "experiment_name": experiment_name,
+        "dataset": args.dataset,
+        "data_cfg": args.data_cfg,
+        "label_folder": args.label_folder,
+        "epsilon": args.class_weight_epsilon,
+        "small_boost": boost_config,
+        "learning_rate": args.lr,
+        "weight_decay": args.weight_decay,
+        "epochs": args.epochs,
+        "seed": args.seed,
+        "subset_seed": args.subset_seed,
+        "train_manifest": args.train_manifest,
+        "valid_manifest": args.valid_manifest,
+        "train_samples": len(train_dataset),
+        "valid_samples": len(valid_dataset),
+        "cell_sampling": args.cell_sampling,
+        "majority_cell_cap": (
+            args.majority_cell_cap
+            if args.cell_sampling == "class_balanced"
+            else None
+        ),
+        "cell_sampling_seed": args.cell_sampling_seed,
+        "feature_dim": args.feature_dim,
+        "H": args.H,
+        "W": args.W,
+        "max_radius": args.max_radius,
+        "class_weights": class_weights.detach().cpu().tolist(),
+    }
+    save_json(save_dir / "run_config.json", run_config)
 
     print("\n================================")
     print("Polar Point Encoder Pretraining")
@@ -831,6 +1387,17 @@ def main():
     print(f"feature dim  : {args.feature_dim}")
     print(f"epochs       : {args.epochs}")
     print(f"lr           : {args.lr}")
+    print(f"epsilon      : {args.class_weight_epsilon}")
+    print(f"boosts       : {boost_config}")
+    print(f"cell sampling: {args.cell_sampling}")
+    print(
+        "majority cap :",
+        args.majority_cell_cap
+        if args.cell_sampling == "class_balanced"
+        else "N/A",
+    )
+    print(f"sampling seed: {args.cell_sampling_seed}")
+    print("valid sampling: none (all occupied cells)")
     print(f"train scans  : {len(train_dataset)}")
     print(f"valid scans  : {len(valid_dataset)}")
     print("================================\n")
@@ -859,6 +1426,24 @@ def main():
         sample_target.cpu(),
         return_counts=True,
     )
+    sanity_selected = select_loss_cell_indices(
+        target=sample_target,
+        cell_sampling=args.cell_sampling,
+        majority_cell_cap=args.majority_cell_cap,
+        small_classes=SMALL_CLASSES,
+        seed=args.cell_sampling_seed,
+        epoch=0,
+        sequence=sample["seq"],
+        frame=sample["frame"],
+    )
+    sanity_before = torch.bincount(
+        sample_target.detach().cpu(),
+        minlength=num_classes,
+    )[:num_classes]
+    sanity_after = torch.bincount(
+        sample_target.index_select(0, sanity_selected).detach().cpu(),
+        minlength=num_classes,
+    )[:num_classes]
 
     print(
         "[Sanity check] first scan:",
@@ -882,6 +1467,35 @@ def main():
         int(sample_target.min().item()),
         int(sample_target.max().item()),
     )
+    print(
+        f"  loss-cell sampling: {args.cell_sampling}, "
+        f"cap={args.majority_cell_cap if args.cell_sampling == 'class_balanced' else 'N/A'}"
+    )
+    print("  class counts before -> after:")
+    for class_id in range(num_classes):
+        before = int(sanity_before[class_id].item())
+        after = int(sanity_after[class_id].item())
+        if before > 0 or after > 0:
+            print(
+                f"    {class_id:2d} {CLASS_NAMES[class_id]:15s}: "
+                f"{before:6d} -> {after:6d}"
+            )
+
+    if sanity_after[0].item() != 0:
+        raise RuntimeError("Sanity check failed: class 0 entered the loss")
+    for class_id in SMALL_CLASSES:
+        if sanity_after[class_id].item() != sanity_before[class_id].item():
+            raise RuntimeError(
+                f"Sanity check failed: small class {class_id} was dropped"
+            )
+    if args.cell_sampling == "class_balanced":
+        for class_id in range(1, num_classes):
+            if class_id not in SMALL_CLASSES and (
+                sanity_after[class_id].item() > args.majority_cell_cap
+            ):
+                raise RuntimeError(
+                    f"Sanity check failed: class {class_id} exceeds cap"
+                )
     print()
 
     for epoch in range(args.epochs):
@@ -889,7 +1503,7 @@ def main():
             f"========== Epoch {epoch + 1}/{args.epochs} =========="
         )
 
-        train_loss = train_one_epoch(
+        train_loss, epoch_sampling_stats = train_one_epoch(
             model=model,
             loader=train_loader,
             optimizer=optimizer,
@@ -900,6 +1514,21 @@ def main():
             H=args.H,
             W=args.W,
             max_radius=args.max_radius,
+            cell_sampling=args.cell_sampling,
+            majority_cell_cap=args.majority_cell_cap,
+            cell_sampling_seed=args.cell_sampling_seed,
+            epoch=epoch,
+        )
+        merge_cell_sampling_stats(
+            cumulative_sampling_stats,
+            epoch_sampling_stats,
+        )
+        sampling_stats_payload = save_cell_sampling_stats(
+            save_dir=save_dir,
+            stats=cumulative_sampling_stats,
+            cell_sampling=args.cell_sampling,
+            majority_cell_cap=args.majority_cell_cap,
+            completed_epochs=epoch + 1,
         )
 
         val_loss, metrics = validate(
@@ -917,14 +1546,53 @@ def main():
         val_miou = metrics["miou"]
         val_acc = metrics["accuracy"]
         small_miou = metrics["small_miou"]
+        core_small_miou = metrics["core_small_miou"]
+        core_small_positive = metrics["core_small_positive_classes"]
+        core_small_above_one_percent = metrics[
+            "core_small_above_one_percent_classes"
+        ]
 
         print(
             f"train loss : {train_loss:.4f}\n"
             f"val loss   : {val_loss:.4f}\n"
             f"val mIoU   : {100.0 * val_miou:.2f}%\n"
             f"val Acc    : {100.0 * val_acc:.2f}%\n"
-            f"small mIoU : {100.0 * small_miou:.2f}%"
+            f"small mIoU : {100.0 * small_miou:.2f}%\n"
+            f"core small : {100.0 * core_small_miou:.2f}%\n"
+            f"core IoU>0 : {core_small_positive}/{len(CORE_SMALL_CLASSES)}\n"
+            f"core IoU>1%: {core_small_above_one_percent}/"
+            f"{len(CORE_SMALL_CLASSES)}"
         )
+
+        class_iou = serializable_iou(metrics["iou"])
+        epoch_record = {
+            "experiment_name": experiment_name,
+            "epsilon": args.class_weight_epsilon,
+            "small_boost": boost_config,
+            "learning_rate": args.lr,
+            "epoch": epoch + 1,
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            "val_miou": val_miou,
+            "val_accuracy": val_acc,
+            "small_miou": small_miou,
+            "core_small_miou": core_small_miou,
+            "core_small_positive_classes": core_small_positive,
+            "core_small_above_one_percent_classes": (
+                core_small_above_one_percent
+            ),
+            "class_iou": class_iou,
+            "cell_sampling_stats_path": str(
+                save_dir / "cell_sampling_stats.json"
+            ),
+            "checkpoint_path": str(save_dir / "last_point_pretrain.pth"),
+            "best_overall_checkpoint": str(
+                save_dir / "best_point_pretrain_full.pth"
+            ),
+            "best_small_checkpoint": str(
+                save_dir / "best_small_point_pretrain_full.pth"
+            ),
+        }
 
         # 毎epochの再開用checkpoint
         last_ckpt = {
@@ -935,8 +1603,15 @@ def main():
             "val_miou": val_miou,
             "val_accuracy": val_acc,
             "small_miou": small_miou,
+            "core_small_miou": core_small_miou,
+            "core_small_positive_classes": core_small_positive,
+            "core_small_above_one_percent_classes": (
+                core_small_above_one_percent
+            ),
+            "class_iou": class_iou,
             "feature_dim": args.feature_dim,
             "num_classes": num_classes,
+            "run_config": run_config,
         }
 
         torch.save(
@@ -946,6 +1621,7 @@ def main():
 
         if val_miou > best_miou:
             best_miou = val_miou
+            best_overall_record = dict(epoch_record)
 
             # Step Bでそのまま読むencoder単体
             torch.save(
@@ -964,12 +1640,9 @@ def main():
                 f"{100.0 * best_miou:.2f}%"
             )
 
-            print_class_iou(
-                metrics["iou"]
-            )
-
         if small_miou > best_small_miou:
             best_small_miou = small_miou
+            best_small_record = dict(epoch_record)
 
             torch.save(
                 model.encoder.state_dict(),
@@ -986,13 +1659,66 @@ def main():
                 f"{100.0 * best_small_miou:.2f}%"
             )
 
+        if core_small_miou > best_core_small_miou:
+            best_core_small_miou = core_small_miou
+            best_core_small_record = dict(epoch_record)
+
+        if (
+            best_stage2a_record is None
+            or stage2a_record_key(epoch_record)
+            > stage2a_record_key(best_stage2a_record)
+        ):
+            best_stage2a_record = dict(epoch_record)
+
+        print_class_iou(metrics["iou"])
+        append_jsonl(save_dir / "epoch_results.jsonl", epoch_record)
+
         print()
+
+    summary = {
+        "run_config": run_config,
+        "best_overall": best_overall_record,
+        "best_small": best_small_record,
+        "best_core_small": best_core_small_record,
+        "best_stage2a": best_stage2a_record,
+        "cell_sampling_stats": sampling_stats_payload,
+    }
+    save_json(save_dir / "summary.json", summary)
+
+    print_cell_sampling_stats(cumulative_sampling_stats)
 
     print("================================")
     print("Training finished")
     print(
         "Best val mIoU:",
         f"{100.0 * best_miou:.2f}%"
+    )
+    print(
+        "Best overall epoch:",
+        best_overall_record["epoch"] if best_overall_record else "N/A",
+    )
+    print(
+        "Best small mIoU:",
+        f"{100.0 * best_small_miou:.2f}%",
+        "at epoch",
+        best_small_record["epoch"] if best_small_record else "N/A",
+    )
+    print(
+        "Best core-small mIoU:",
+        f"{100.0 * best_core_small_miou:.2f}%",
+        "at epoch",
+        best_core_small_record["epoch"] if best_core_small_record else "N/A",
+    )
+    print(
+        "Stage 2A selected epoch:",
+        best_stage2a_record["epoch"] if best_stage2a_record else "N/A",
+        "(core IoU>0:",
+        (
+            f"{best_stage2a_record['core_small_positive_classes']}/"
+            f"{len(CORE_SMALL_CLASSES)})"
+            if best_stage2a_record
+            else "N/A)"
+        ),
     )
     print(
         "Encoder:",
