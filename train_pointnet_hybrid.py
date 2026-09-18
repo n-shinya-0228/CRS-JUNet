@@ -9,7 +9,6 @@ from shutil import copyfile   #copy file and directory
 import sys
 import os
 import os.path as osp
-import shutil
 from loguru import logger   #log library
 
 TRAINER_DIR = osp.join(osp.dirname(osp.abspath(__file__)), "lib", "trainer")
@@ -73,8 +72,9 @@ if __name__ == '__main__':
   try:
     if os.path.isdir(FLAGS.log):
       if FLAGS.resume is None:  
-        shutil.rmtree(FLAGS.log)
-        os.makedirs(FLAGS.log)
+        raise FileExistsError(
+            f"Log directory already exists: {FLAGS.log}. Use a new log directory."
+        )
       else:
         logger.info(f"Resuming training... Keeping existing log folder: {FLAGS.log}") # 消さずに残す
     else:
@@ -82,7 +82,7 @@ if __name__ == '__main__':
   except Exception as e:
     print(e)
     print("Error creating log directory. Check permissions!")
-    quit()
+    sys.exit(1)
 
   logger = set_logger(osp.join(FLAGS.log, 'log.txt'))     #log.txt にログを保存する設定
 

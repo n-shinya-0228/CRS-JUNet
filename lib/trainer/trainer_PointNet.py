@@ -188,6 +188,12 @@ class Trainer():
                              arch_cfg=ARCH,
                              gt=True,
                              shuffle_train=True)
+        self.logger.info(
+            f"Copy-Paste probability: {self.parser.train_dataset.copy_paste_prob:.1f}"
+        )
+        self.logger.info(f"Train batch size: {self.parser.get_train_set().batch_size}")
+        self.logger.info(f"Train scans: {len(self.parser.train_dataset)}")
+        self.logger.info(f"Train batches per epoch: {self.parser.get_train_size()}")
 
         # Class weights
         epsilon_w = self.ARCH["train"]["epsilon_w"]
@@ -303,6 +309,8 @@ class Trainer():
 
         # (optional) resume
         self.start_epoch = 0
+        self.best_train_iou = 0.0
+        self.best_val_iou = 0.0
         if self.resume is not None:
             try:
                 try:
@@ -314,7 +322,11 @@ class Trainer():
                 self.model.load_state_dict(w_dict['model'])
                 self.optimizer.load_state_dict(w_dict['optim'])
                 self.scheduler.load_state_dict(w_dict['scheduler'])
+                if 'scaler' in w_dict:
+                    self.scaler.load_state_dict(w_dict['scaler'])
                 self.start_epoch = w_dict.get('epoch', 0) + 1
+                self.best_train_iou = w_dict.get('best_train_iou', 0.0)
+                self.best_val_iou = w_dict.get('best_val_iou', 0.0)
                 
                 if self.use_ema:
                     self._build_ema_model()
@@ -322,7 +334,7 @@ class Trainer():
                         self.ema_model.load_state_dict(w_dict['model_ema'])
                 self.logger.info(f"✅ Successfully RESUMED training from {self.resume}. Starting at epoch {self.start_epoch}")
             except Exception as e:
-                self.logger.warning(f"❌ Couldn't resume from {self.resume}. Error: {e}")
+                raise RuntimeError(f"Couldn't resume from {self.resume}: {e}") from e
 
         elif self.pretrained is not None:
             try:
@@ -344,6 +356,11 @@ class Trainer():
         self.w_lovasz = 0.50
         self.w_boundary = 0.20
         self.w_paste = 0.00
+        self.logger.info(f"Paste-region weighted loss: {self.w_paste:.2f}")
+        self.logger.info(
+            f"Starting epoch: {self.start_epoch} | "
+            f"Resume: {self.resume} | Pretrained: {self.pretrained}"
+        )
 
     def _build_ema_model(self):
         self.ema_model = copy.deepcopy(self.model)
@@ -396,8 +413,8 @@ class Trainer():
         return loss
 
     def train(self):
-        best_train_iou = 0.0
-        best_val_iou = 0.0
+        best_train_iou = self.best_train_iou
+        best_val_iou = self.best_val_iou
 
         self.ignore_class = []
         for i, w in enumerate(self.loss_w):
@@ -485,8 +502,28 @@ class Trainer():
                     torch.save(state, osp.join(self.log, 'best_val.path'))
                 self.logger.info("*" * 80)
 
+            self._save_latest_checkpoint(epoch, best_train_iou, best_val_iou)
+
         self.logger.info('Finished Training')
         return
+
+    def _save_latest_checkpoint(self, epoch, best_train_iou, best_val_iou):
+        # Resume needs the training weights paired with the optimizer, not EMA weights.
+        state = {
+            'epoch': epoch,
+            'model': self.model.state_dict(),
+            'optim': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict(),
+            'scaler': self.scaler.state_dict(),
+            'best_train_iou': best_train_iou,
+            'best_val_iou': best_val_iou,
+        }
+        if self.use_ema and self.ema_model is not None:
+            state['model_ema'] = self.ema_model.state_dict()
+        path = osp.join(self.log, 'latest.path')
+        torch.save(state, path + '.tmp')
+        os.replace(path + '.tmp', path)
+        self.logger.info(f"Saved resume checkpoint: {path} (epoch {epoch})")
 
     def _mix_losses(self, outs, labels, boundary_gt, proj_mask,paste_mask=None):
         # outs is dict from JunNet / ChatNet4
@@ -560,6 +597,9 @@ class Trainer():
         for i, (in_vol, proj_mask, proj_labels, _, path_seq, path_name,
                 _, _, proj_range, _, _, _, _, _, paste_mask, edge) in enumerate(train_loader):
             data_time.update(time.time() - end)
+            if epoch == self.start_epoch and i < 3:
+                if torch.count_nonzero(paste_mask).item() != 0:
+                    raise RuntimeError("Copy-Paste OFF requires an empty paste_mask")
             if not self.multi_gpu and self.gpu:
                 in_vol = in_vol.cuda()
                 proj_mask = proj_mask.cuda()
@@ -685,7 +725,7 @@ class Trainer():
                 self.logger.info(f"proj_labels shape: {proj_labels.shape}")
                 self.logger.info(f"paste_mask shape: {paste_mask.shape}")
 
-            if i % report == 0:
+            if i % report == 0 or (epoch == self.start_epoch and i < 3):
                 self.logger.info(f"paste_mask sum: {paste_mask.sum().item():.1f}")
 
         return acc.avg, iou.avg, losses.avg, update_ratio_meter.avg

@@ -59,7 +59,7 @@ class Parser:
         self.sensor = arch_cfg["dataset"]["sensor"]
         self.batch_size = arch_cfg["train"]["batch_size"]
         self.workers = arch_cfg["train"]["workers"]
-        self.copy_paste_prob = float(arch_cfg["train"].get("copy_paste_prob", 0.75))
+        self.copy_paste_prob = 0.0
         pointnet_cfg = arch_cfg["dataset"].get("pointnet", {})
         self.pointnet_folder = pointnet_cfg.get("folder", "pointnet_16ch")
         self.pointnet_feature_dim = int(pointnet_cfg.get("feature_dim", 16))
@@ -92,7 +92,7 @@ class Parser:
             root=self.root, sequences=self.train_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=True, copy_paste_prob=self.copy_paste_prob,
+            gt=self.gt, is_train=True, copy_paste_prob=0.0,
             pointnet_folder=self.pointnet_folder,
             pointnet_feature_dim=self.pointnet_feature_dim,
             pointnet_max_radius=self.pointnet_max_radius,
@@ -109,7 +109,7 @@ class Parser:
             root=self.root, sequences=self.valid_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=False,
+            gt=self.gt, is_train=False, copy_paste_prob=0.0,
             pointnet_folder=self.pointnet_folder,
             pointnet_feature_dim=self.pointnet_feature_dim,
             pointnet_max_radius=self.pointnet_max_radius,

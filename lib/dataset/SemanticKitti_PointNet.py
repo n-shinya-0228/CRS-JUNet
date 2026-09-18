@@ -10,7 +10,7 @@ class SemanticKitti(Dataset):
     def __init__(self, root, sequences, labels, color_map,
                  learning_map, learning_map_inv, sensor,
                  max_points=150000, gt=True, skip=0,
-                 is_train=False, copy_paste_prob=0.75,
+                 is_train=False, copy_paste_prob=0.0,
                  pointnet_folder="pointnet_16ch", pointnet_feature_dim=16,
                  pointnet_max_radius=51.2):
         super().__init__()
