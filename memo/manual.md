@@ -3,7 +3,21 @@
 --------------------------------------------------------------
 - 学習
 
-  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --log logs/BEV_`
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --log logs/BEV_`
+
+- 学習の再開
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/aaa/best_val.path --log logs/`
+
+  uv run python train.py \
+  --dataset SemanticKitti/ \
+  --arch_cfg config/arch/SJunNet_8ch_finetune.yaml \
+  --log logs/SJNet3_step1.5_offcp_ft \
+  --pretrained logs/SJNet3_step1.5/best_val.path
+
+- ほかのモデルをベースに学習
+  
+  `uv run python train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml -p logs/a/best.path --log logs/BEV_`
 
 - グラフの確認
 
@@ -11,7 +25,7 @@
 
 - 推論
 
-  `uv run python infer_bev_512v3.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
+  `uv run python infer_bev_512_8ch.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --data_cfg config/labels/semantic-kitti.yaml --pretrained logs/BEV_512_/best_val.path --save_path output/BEV_`
 
 - 評価　
 
@@ -25,22 +39,17 @@
 
   `uv run python prepare_bev2.py --dataset SemanticKitti/ --data_cfg config/labels/semantic-kitti.yaml`
 
+  `uv run python prepare_multiframe_cache.py \ --dataset SemanticKitti/ \ --data_cfg config/labels/semantic-kitti.yaml \ --num_past_frames 2`
+
 - データの削除
   
-  `rm -rf SemanticKitti/sequences/*/bev`
+  `rm -rf SemanticKitti/sequences/*/bev`　
 
-- Cドライブに空き容量を返す
+- zipファイル化
   
-  PowerShell
+  `cd /home/ns/CRS-JUNet/output/`
   
-  wsl --shutdown
-  diskpart
-  select vdisk file="C:\Users\shiny\AppData\Local\wsl\{fc216d3d-7b84-4de5-856f-fa58b2634af0}\ext4.vhdx"
-  attach vdisk readonly
-  compact vdisk
-  detach vdisk
-  exit
-　
+  `zip -r submission.zip sequences/`
 
 --------------------------------------------------------------
 
@@ -166,6 +175,10 @@ https://semantic-kitti.org/dataset.html
 
 ここからダウンロードしてCRS-JUNet/のところに置く
 
+https://www.codabench.org/competitions/12448/#/pages-tab
+
+ここで11~21まで推論したものを評価する
+
 --------------------------------------------------------------
 
 Zone.Identifierの消し方
@@ -183,3 +196,23 @@ Zone.Identifierの消し方
 `find . -type f -name '*:Zone.Identifier' -exec rm {} \;`
 
 --------------------------------------------------------------
+
+Cドライブに空き容量を返す
+--------------------------------------------------------------
+PowerShell
+  
+  `wsl --shutdown`
+
+  `diskpart`
+
+  `select vdisk file="C:\Users\shiny\AppData\Local\wsl\{fc216d3d-7b84-4de5-856f-fa58b2634af0}\ext4.vhdx"`
+
+  `attach vdisk readonly`
+
+  `compact vdisk`
+
+  `detach vdisk`
+
+  `exit`
+
+---------------------------------------------------------------

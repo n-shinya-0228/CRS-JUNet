@@ -1,0 +1,13 @@
+=== Training Execution Log ===
+Date: 2026-05-07 13:31:23
+Command: train.py --dataset SemanticKitti/ --arch_cfg config/arch/SJunNet_8ch.yaml --resume logs/SJNet3/best_val.path --log logs/SJNet3
+------------------------------
+[Used Files]
+Config YAML : config/arch/SJunNet_8ch.yaml
+Model File  : lib/models/SJNet3.py
+Dataset File: lib/dataset/SemanticKitti_Polar3.py
+Trainer File: trainer_polar8.py
+------------------------------
+[Key Settings]
+Dataset Root: SemanticKitti/
+Log Dir     : logs/SJNet3

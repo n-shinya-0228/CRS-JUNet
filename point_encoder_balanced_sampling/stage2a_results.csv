@@ -1,0 +1,6 @@
+experiment,majority_cell_cap,best_epoch,val_mIoU_percent,val_Acc_percent,small_mIoU_percent,core_small_mIoU_percent,core_nonzero_over_5,core_above_1_percent_over_5,bicycle_IoU_percent,motorcycle_IoU_percent,person_IoU_percent,bicyclist_IoU_percent,motorcyclist_IoU_percent,pole_IoU_percent,traffic-sign_IoU_percent
+control,,3,14.4788,60.8645,1.7288,0.0,0/5,0/5,0.0,0.0,0.0,0.0,0.0,1.2627,10.8387
+cap4000,4000,3,13.7303,54.5282,2.4493,0.0,0/5,0/5,0.0,0.0,0.0,0.0,0.0,3.0231,14.122
+cap2000,2000,3,13.0507,51.684,2.4608,0.0,0/5,0/5,0.0,0.0,0.0,0.0,0.0,3.2704,13.955
+cap1000,1000,3,12.1361,48.3617,2.5162,0.0,0/5,0/5,0.0,0.0,0.0,0.0,0.0,3.3134,14.2998
+cap500,500,2,10.6986,42.7729,2.3672,0.0,0/5,0/5,0.0,0.0,0.0,0.0,0.0,2.9662,13.6043

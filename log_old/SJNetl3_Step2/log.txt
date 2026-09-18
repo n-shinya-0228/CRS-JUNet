@@ -1,0 +1,527 @@
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:88 - ----------
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:89 - INTERFACE:
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:90 - dataset
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:91 - arch_cfg
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:92 - data_cfg
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:93 - log
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:94 - pretrained
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:95 - ----------
+
+2026-06-11 13:03:12.384 | INFO     | __main__:<module>:99 - Opening arch config file config/arch/SJunNet_8ch.yaml
+2026-06-11 13:03:12.387 | INFO     | __main__:<module>:108 - Opening data config file config/labels/semantic-kitti.yaml
+2026-06-11 13:03:12.395 | WARNING  | __main__:<module>:122 - No pretrained directory found.
+2026-06-11 13:03:12.395 | INFO     | __main__:<module>:127 - Copying files to logs/SJNetl3_Step2 for further reference.
+2026-06-11 13:03:12.430 | INFO     | lib.trainer:__init__:180 - Saved execution info to logs/SJNetl3_Step2/used_files.txt
+2026-06-11 13:03:12.468 | INFO     | lib.trainer:__init__:205 - Loss weights from content: [0.0, 19.008569717407227, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 4.789350509643555, 20.0, 6.496752738952637, 20.0, 7.008383274078369, 12.141926765441895, 3.6125195026397705, 20.0, 11.345297813415527, 20.0, 20.0]
+2026-06-11 13:03:12.586 | INFO     | lib.trainer:__init__:217 - Total number of parameters: 27604045
+2026-06-11 13:03:12.586 | INFO     | lib.trainer:__init__:218 - Total number of parameters requires_grad: 27604045
+2026-06-11 13:03:12.586 | INFO     | lib.trainer:__init__:226 - Training in device: cuda
+2026-06-11 13:03:13.214 | INFO     | lib.trainer:__init__:314 - ✅ Successfully RESUMED training from logs/SJNetl3_step2/best_val.path. Starting at epoch 30
+2026-06-11 13:03:13.216 | INFO     | lib.trainer:train:397 - Ignoring class 0 in IoU evaluation
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][0/9565] | Loss 5.0745 (5.0745) | acc 0.798 (0.798) | IoU 0.272 (0.272)
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 13:03:56.474 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 103.0
+2026-06-11 13:06:04.838 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][200/9565] | Loss 9.1027 (2.2794) | acc 0.757 (0.765) | IoU 0.318 (0.326)
+2026-06-11 13:06:04.838 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 30.0
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:88 - ----------
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:89 - INTERFACE:
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:90 - dataset
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:91 - arch_cfg
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:92 - data_cfg
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:93 - log
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:94 - pretrained
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:95 - ----------
+
+2026-06-11 13:08:00.016 | INFO     | __main__:<module>:99 - Opening arch config file config/arch/SJunNet_8ch.yaml
+2026-06-11 13:08:00.018 | INFO     | __main__:<module>:108 - Opening data config file config/labels/semantic-kitti.yaml
+2026-06-11 13:08:00.031 | WARNING  | __main__:<module>:122 - No pretrained directory found.
+2026-06-11 13:08:00.031 | INFO     | __main__:<module>:127 - Copying files to logs/SJNetl3_Step2 for further reference.
+2026-06-11 13:08:00.069 | INFO     | lib.trainer:__init__:180 - Saved execution info to logs/SJNetl3_Step2/used_files.txt
+2026-06-11 13:08:00.086 | INFO     | lib.trainer:__init__:205 - Loss weights from content: [0.0, 19.008569717407227, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 4.789350509643555, 20.0, 6.496752738952637, 20.0, 7.008383274078369, 12.141926765441895, 3.6125195026397705, 20.0, 11.345297813415527, 20.0, 20.0]
+2026-06-11 13:08:00.166 | INFO     | lib.trainer:__init__:217 - Total number of parameters: 27604045
+2026-06-11 13:08:00.166 | INFO     | lib.trainer:__init__:218 - Total number of parameters requires_grad: 27604045
+2026-06-11 13:08:00.166 | INFO     | lib.trainer:__init__:226 - Training in device: cuda
+2026-06-11 13:08:00.595 | INFO     | lib.trainer:__init__:314 - ✅ Successfully RESUMED training from logs/SJNetl3_step2/best_val.path. Starting at epoch 30
+2026-06-11 13:08:00.595 | INFO     | lib.trainer:train:397 - Ignoring class 0 in IoU evaluation
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][0/9565] | Loss 5.0745 (5.0745) | acc 0.798 (0.798) | IoU 0.272 (0.272)
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 13:08:44.332 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 103.0
+2026-06-11 13:40:46.289 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][3000/9565] | Loss 2.3678 (2.2503) | acc 0.755 (0.756) | IoU 0.305 (0.308)
+2026-06-11 13:40:46.289 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 568.0
+2026-06-11 14:12:54.079 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][6000/9565] | Loss 3.7370 (2.2654) | acc 0.753 (0.754) | IoU 0.304 (0.306)
+2026-06-11 14:12:54.079 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 424.0
+2026-06-11 14:44:57.256 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.104e-03 | Epoch: [30][9000/9565] | Loss 1.3048 (2.3423) | acc 0.749 (0.753) | IoU 0.300 (0.305)
+2026-06-11 14:44:57.256 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 21.0
+2026-06-11 14:51:00.625 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-11 14:51:00.626 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-11 14:58:49.762 | INFO     | lib.trainer:validate:730 - Validation: acc 0.799 | mIoU 0.301 | loss 1.2339
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.818
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.179
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.047
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.090
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.105
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.144
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.198
+2026-06-11 14:58:49.763 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.004
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.817
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.102
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.608
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.002
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.657
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.118
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.696
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.147
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.720
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.072
+2026-06-11 14:58:49.764 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.198
+2026-06-11 14:58:49.765 | INFO     | lib.trainer:train:459 - Best mean IoU on validation so far, saving!
+2026-06-11 14:58:49.765 | INFO     | lib.trainer:train:461 - ********************************************************************************
+2026-06-11 14:58:50.087 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.041e-03 | Epoch: [31][0/9565] | Loss 1.3673 (1.3673) | acc 0.743 (0.743) | IoU 0.252 (0.252)
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 14:58:51.824 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 25.0
+2026-06-11 15:30:58.121 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.041e-03 | Epoch: [31][3000/9565] | Loss 3.4347 (2.3729) | acc 0.750 (0.750) | IoU 0.301 (0.303)
+2026-06-11 15:30:58.121 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 49.0
+2026-06-11 16:03:04.532 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.041e-03 | Epoch: [31][6000/9565] | Loss 5.7132 (2.3918) | acc 0.746 (0.749) | IoU 0.299 (0.301)
+2026-06-11 16:03:04.532 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 42.0
+2026-06-11 16:35:10.147 | INFO     | lib.trainer:train_epoch:623 - Lr: 4.041e-03 | Epoch: [31][9000/9565] | Loss 1.4288 (2.3825) | acc 0.747 (0.748) | IoU 0.298 (0.300)
+2026-06-11 16:35:10.148 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 13.0
+2026-06-11 16:41:13.289 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-11 16:48:53.520 | INFO     | lib.trainer:validate:730 - Validation: acc 0.805 | mIoU 0.305 | loss 1.1914
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.813
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.185
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.056
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.094
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.112
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.178
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.150
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.004
+2026-06-11 16:48:53.521 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.815
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.119
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.610
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.008
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.656
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.125
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.708
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.161
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.729
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.083
+2026-06-11 16:48:53.522 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.195
+2026-06-11 16:48:53.523 | INFO     | lib.trainer:train:459 - Best mean IoU on validation so far, saving!
+2026-06-11 16:48:53.523 | INFO     | lib.trainer:train:461 - ********************************************************************************
+2026-06-11 16:48:53.868 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.976e-03 | Epoch: [32][0/9565] | Loss 10.2324 (10.2324) | acc 0.758 (0.758) | IoU 0.281 (0.281)
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 16:48:56.189 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 15.0
+2026-06-11 17:21:02.212 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.976e-03 | Epoch: [32][3000/9565] | Loss 1.5606 (2.3286) | acc 0.750 (0.749) | IoU 0.301 (0.300)
+2026-06-11 17:21:02.213 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 17:53:07.139 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.976e-03 | Epoch: [32][6000/9565] | Loss 3.1806 (2.2993) | acc 0.752 (0.750) | IoU 0.305 (0.302)
+2026-06-11 17:53:07.139 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 185.0
+2026-06-11 18:25:12.976 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.976e-03 | Epoch: [32][9000/9565] | Loss 1.1985 (2.2851) | acc 0.754 (0.751) | IoU 0.305 (0.303)
+2026-06-11 18:25:12.976 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 18:31:15.884 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-11 18:38:55.400 | INFO     | lib.trainer:validate:730 - Validation: acc 0.802 | mIoU 0.293 | loss 1.1954
+2026-06-11 18:38:55.400 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-11 18:38:55.400 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.823
+2026-06-11 18:38:55.400 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.188
+2026-06-11 18:38:55.400 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.056
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.065
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.111
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.162
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.076
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.003
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.815
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.125
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.612
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.006
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.657
+2026-06-11 18:38:55.401 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.124
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.702
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.121
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.726
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.063
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.142
+2026-06-11 18:38:55.402 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-11 18:38:57.541 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.910e-03 | Epoch: [33][0/9565] | Loss 1.6953 (1.6953) | acc 0.832 (0.832) | IoU 0.303 (0.303)
+2026-06-11 18:38:57.542 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 18:38:57.542 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 18:38:57.542 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 18:38:57.542 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 18:38:57.542 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 111.0
+2026-06-11 19:10:59.371 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.910e-03 | Epoch: [33][3000/9565] | Loss 0.9796 (2.2907) | acc 0.756 (0.755) | IoU 0.306 (0.305)
+2026-06-11 19:10:59.371 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 19:43:02.977 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.910e-03 | Epoch: [33][6000/9565] | Loss 1.4748 (2.2633) | acc 0.756 (0.755) | IoU 0.308 (0.306)
+2026-06-11 19:43:02.977 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 72.0
+2026-06-11 20:15:06.648 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.910e-03 | Epoch: [33][9000/9565] | Loss 1.1566 (2.2632) | acc 0.757 (0.756) | IoU 0.308 (0.306)
+2026-06-11 20:15:06.648 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 16.0
+2026-06-11 20:21:08.820 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-11 20:21:08.821 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-11 20:28:44.329 | INFO     | lib.trainer:validate:730 - Validation: acc 0.806 | mIoU 0.311 | loss 1.1730
+2026-06-11 20:28:44.329 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-11 20:28:44.329 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.816
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.174
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.040
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.197
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.117
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.151
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.224
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.002
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.825
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.115
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.623
+2026-06-11 20:28:44.330 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.006
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.658
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.124
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.703
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.152
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.730
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.073
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.185
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:train:459 - Best mean IoU on validation so far, saving!
+2026-06-11 20:28:44.331 | INFO     | lib.trainer:train:461 - ********************************************************************************
+2026-06-11 20:28:44.669 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.842e-03 | Epoch: [34][0/9565] | Loss 1.5679 (1.5679) | acc 0.742 (0.742) | IoU 0.255 (0.255)
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 20:28:47.517 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 108.0
+2026-06-11 21:00:53.590 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.842e-03 | Epoch: [34][3000/9565] | Loss 1.4385 (2.3075) | acc 0.755 (0.754) | IoU 0.309 (0.308)
+2026-06-11 21:00:53.590 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 21:32:56.809 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.842e-03 | Epoch: [34][6000/9565] | Loss 1.4628 (2.2636) | acc 0.757 (0.755) | IoU 0.310 (0.308)
+2026-06-11 21:32:56.809 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 22:05:01.242 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.842e-03 | Epoch: [34][9000/9565] | Loss 1.2457 (2.2489) | acc 0.758 (0.756) | IoU 0.311 (0.309)
+2026-06-11 22:05:01.242 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 22:11:01.958 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-11 22:11:01.958 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-11 22:18:39.875 | INFO     | lib.trainer:validate:730 - Validation: acc 0.801 | mIoU 0.304 | loss 1.1827
+2026-06-11 22:18:39.875 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-11 22:18:39.875 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.819
+2026-06-11 22:18:39.875 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.177
+2026-06-11 22:18:39.875 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.061
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.072
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.107
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.172
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.189
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.004
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.821
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.113
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.613
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.008
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.649
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.126
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.694
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.170
+2026-06-11 22:18:39.876 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.728
+2026-06-11 22:18:39.877 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.058
+2026-06-11 22:18:39.877 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.199
+2026-06-11 22:18:39.877 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.773e-03 | Epoch: [35][0/9565] | Loss 3.5346 (3.5346) | acc 0.720 (0.720) | IoU 0.256 (0.256)
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-11 22:18:41.651 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 693.0
+2026-06-11 22:50:46.602 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.773e-03 | Epoch: [35][3000/9565] | Loss 3.1512 (2.2302) | acc 0.760 (0.762) | IoU 0.314 (0.314)
+2026-06-11 22:50:46.603 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 295.0
+2026-06-11 23:22:50.283 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.773e-03 | Epoch: [35][6000/9565] | Loss 1.5748 (2.2433) | acc 0.759 (0.761) | IoU 0.313 (0.314)
+2026-06-11 23:22:50.283 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-11 23:54:57.209 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.773e-03 | Epoch: [35][9000/9565] | Loss 3.1559 (2.2240) | acc 0.760 (0.760) | IoU 0.313 (0.313)
+2026-06-11 23:54:57.209 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 150.0
+2026-06-12 00:00:59.284 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 00:00:59.286 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 00:08:35.579 | INFO     | lib.trainer:validate:730 - Validation: acc 0.809 | mIoU 0.306 | loss 1.1561
+2026-06-12 00:08:35.579 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 00:08:35.579 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.821
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.200
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.055
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.120
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.124
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.139
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.068
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.005
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.825
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.138
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.629
+2026-06-12 00:08:35.580 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.005
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.682
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.126
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.707
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.169
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.730
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.080
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.184
+2026-06-12 00:08:35.581 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.703e-03 | Epoch: [36][0/9565] | Loss 1.1262 (1.1262) | acc 0.765 (0.765) | IoU 0.290 (0.290)
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 00:08:36.923 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 00:40:42.732 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.703e-03 | Epoch: [36][3000/9565] | Loss 2.1259 (2.2563) | acc 0.759 (0.759) | IoU 0.312 (0.312)
+2026-06-12 00:40:42.732 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 42.0
+2026-06-12 01:12:48.149 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.703e-03 | Epoch: [36][6000/9565] | Loss 1.3555 (2.2063) | acc 0.760 (0.759) | IoU 0.315 (0.313)
+2026-06-12 01:12:48.149 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 01:44:53.597 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.703e-03 | Epoch: [36][9000/9565] | Loss 1.5349 (2.1844) | acc 0.762 (0.760) | IoU 0.316 (0.314)
+2026-06-12 01:44:53.597 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 49.0
+2026-06-12 01:50:53.785 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 01:50:53.785 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:730 - Validation: acc 0.805 | mIoU 0.308 | loss 1.1543
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.823
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.181
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.062
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.118
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.156
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.166
+2026-06-12 01:58:31.696 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.143
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.004
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.828
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.107
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.625
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.005
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.661
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.125
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.693
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.142
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.725
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.077
+2026-06-12 01:58:31.697 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.219
+2026-06-12 01:58:31.698 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 01:58:34.292 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.631e-03 | Epoch: [37][0/9565] | Loss 1.0794 (1.0794) | acc 0.795 (0.795) | IoU 0.276 (0.276)
+2026-06-12 01:58:34.292 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 01:58:34.292 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 01:58:34.292 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 01:58:34.292 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 01:58:34.293 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 02:30:38.791 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.631e-03 | Epoch: [37][3000/9565] | Loss 1.2797 (2.2001) | acc 0.765 (0.765) | IoU 0.317 (0.318)
+2026-06-12 02:30:38.791 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 03:02:43.059 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.631e-03 | Epoch: [37][6000/9565] | Loss 1.6662 (2.1914) | acc 0.764 (0.764) | IoU 0.318 (0.318)
+2026-06-12 03:02:43.059 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 85.0
+2026-06-12 03:34:49.222 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.631e-03 | Epoch: [37][9000/9565] | Loss 1.6115 (2.1801) | acc 0.764 (0.764) | IoU 0.318 (0.318)
+2026-06-12 03:34:49.223 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 43.0
+2026-06-12 03:40:50.033 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 03:40:50.034 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 03:48:29.807 | INFO     | lib.trainer:validate:730 - Validation: acc 0.808 | mIoU 0.309 | loss 1.1445
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.827
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.183
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.071
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.046
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.137
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.147
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.161
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.003
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.832
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.126
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.631
+2026-06-12 03:48:29.808 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.008
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.657
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.119
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.693
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.171
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.730
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.101
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.235
+2026-06-12 03:48:29.809 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.559e-03 | Epoch: [38][0/9565] | Loss 1.7140 (1.7140) | acc 0.757 (0.757) | IoU 0.309 (0.309)
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 03:48:31.968 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 28.0
+2026-06-12 04:20:35.786 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.559e-03 | Epoch: [38][3000/9565] | Loss 1.1988 (2.1498) | acc 0.765 (0.766) | IoU 0.322 (0.323)
+2026-06-12 04:20:35.786 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 04:52:41.393 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.559e-03 | Epoch: [38][6000/9565] | Loss 3.0601 (2.1484) | acc 0.767 (0.766) | IoU 0.321 (0.322)
+2026-06-12 04:52:41.393 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 1521.0
+2026-06-12 05:24:45.669 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.559e-03 | Epoch: [38][9000/9565] | Loss 1.4320 (2.1612) | acc 0.766 (0.766) | IoU 0.320 (0.322)
+2026-06-12 05:24:45.669 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 21.0
+2026-06-12 05:30:46.186 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 05:30:46.186 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:730 - Validation: acc 0.811 | mIoU 0.304 | loss 1.1436
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.825
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.166
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.066
+2026-06-12 05:38:23.923 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.103
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.113
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.201
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.088
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.002
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.838
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.131
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.635
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.012
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.655
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.128
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.703
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.158
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.736
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.072
+2026-06-12 05:38:23.924 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.142
+2026-06-12 05:38:23.925 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 05:38:26.766 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.485e-03 | Epoch: [39][0/9565] | Loss 1.4236 (1.4236) | acc 0.716 (0.716) | IoU 0.217 (0.217)
+2026-06-12 05:38:26.767 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 05:38:26.767 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 05:38:26.767 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 05:38:26.767 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 05:38:26.767 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 49.0
+2026-06-12 06:10:30.805 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.485e-03 | Epoch: [39][3000/9565] | Loss 0.8998 (2.1443) | acc 0.766 (0.768) | IoU 0.320 (0.322)
+2026-06-12 06:10:30.805 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 27.0
+2026-06-12 06:42:37.482 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.485e-03 | Epoch: [39][6000/9565] | Loss 1.3207 (2.1481) | acc 0.767 (0.768) | IoU 0.320 (0.321)
+2026-06-12 06:42:37.482 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 07:14:40.754 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.485e-03 | Epoch: [39][9000/9565] | Loss 1.2058 (2.1484) | acc 0.767 (0.768) | IoU 0.322 (0.321)
+2026-06-12 07:14:40.755 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 53.0
+2026-06-12 07:20:43.134 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:730 - Validation: acc 0.812 | mIoU 0.306 | loss 1.1411
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.829
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.202
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.054
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.068
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.143
+2026-06-12 07:28:18.302 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.166
+2026-06-12 07:28:18.303 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.123
+2026-06-12 07:28:18.303 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.004
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.832
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.120
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.628
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.008
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.684
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.129
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.709
+2026-06-12 07:28:18.304 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.178
+2026-06-12 07:28:18.305 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.732
+2026-06-12 07:28:18.305 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.087
+2026-06-12 07:28:18.305 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.118
+2026-06-12 07:28:18.305 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.410e-03 | Epoch: [40][0/9565] | Loss 1.4850 (1.4850) | acc 0.771 (0.771) | IoU 0.239 (0.239)
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 07:28:19.926 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 148.0
+2026-06-12 08:00:26.293 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.410e-03 | Epoch: [40][3000/9565] | Loss 1.6717 (2.1149) | acc 0.771 (0.769) | IoU 0.326 (0.324)
+2026-06-12 08:00:26.294 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 54.0
+2026-06-12 08:32:29.833 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.410e-03 | Epoch: [40][6000/9565] | Loss 6.0282 (2.1051) | acc 0.771 (0.770) | IoU 0.327 (0.325)
+2026-06-12 08:32:29.833 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 46.0
+2026-06-12 09:04:37.331 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.410e-03 | Epoch: [40][9000/9565] | Loss 2.6875 (2.1143) | acc 0.770 (0.770) | IoU 0.325 (0.325)
+2026-06-12 09:04:37.331 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 178.0
+2026-06-12 09:10:37.835 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 09:10:37.836 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:730 - Validation: acc 0.816 | mIoU 0.320 | loss 1.1191
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.830
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.169
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.053
+2026-06-12 09:18:16.007 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.087
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.155
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.195
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.246
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.001
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.835
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.138
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.636
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.014
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.684
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.132
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.716
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.173
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.736
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.085
+2026-06-12 09:18:16.008 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.203
+2026-06-12 09:18:16.009 | INFO     | lib.trainer:train:459 - Best mean IoU on validation so far, saving!
+2026-06-12 09:18:16.009 | INFO     | lib.trainer:train:461 - ********************************************************************************
+2026-06-12 09:18:16.304 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.334e-03 | Epoch: [41][0/9565] | Loss 1.5414 (1.5414) | acc 0.831 (0.831) | IoU 0.293 (0.293)
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 09:18:19.212 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 15.0
+2026-06-12 09:50:25.189 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.334e-03 | Epoch: [41][3000/9565] | Loss 3.4941 (2.1285) | acc 0.769 (0.772) | IoU 0.324 (0.328)
+2026-06-12 09:50:25.189 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 217.0
+2026-06-12 10:22:34.143 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.334e-03 | Epoch: [41][6000/9565] | Loss 1.2087 (2.1265) | acc 0.770 (0.771) | IoU 0.326 (0.326)
+2026-06-12 10:22:34.143 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 10:54:40.925 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.334e-03 | Epoch: [41][9000/9565] | Loss 1.3746 (2.1334) | acc 0.769 (0.770) | IoU 0.326 (0.326)
+2026-06-12 10:54:40.925 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 16.0
+2026-06-12 11:00:43.895 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 11:00:43.897 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:730 - Validation: acc 0.803 | mIoU 0.310 | loss 1.1706
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.820
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.218
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.047
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.141
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.158
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.155
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.146
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.003
+2026-06-12 11:08:21.086 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.829
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.134
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.620
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.006
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.681
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.128
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.693
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.136
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.718
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.067
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.187
+2026-06-12 11:08:21.087 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 11:08:22.727 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.257e-03 | Epoch: [42][0/9565] | Loss 1.3952 (1.3952) | acc 0.818 (0.818) | IoU 0.254 (0.254)
+2026-06-12 11:08:22.727 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 11:08:22.727 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 11:08:22.728 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 11:08:22.728 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 11:08:22.728 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 26.0
+2026-06-12 11:40:31.735 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.257e-03 | Epoch: [42][3000/9565] | Loss 1.0858 (2.1388) | acc 0.767 (0.767) | IoU 0.325 (0.327)
+2026-06-12 11:40:31.735 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 12:12:37.187 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.257e-03 | Epoch: [42][6000/9565] | Loss 2.1405 (2.1471) | acc 0.769 (0.768) | IoU 0.326 (0.326)
+2026-06-12 12:12:37.187 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 18.0
+2026-06-12 12:44:42.212 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.257e-03 | Epoch: [42][9000/9565] | Loss 1.1512 (2.1307) | acc 0.769 (0.768) | IoU 0.326 (0.326)
+2026-06-12 12:44:42.212 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0
+2026-06-12 12:50:45.256 | INFO     | lib.trainer:train:443 - Best mean IoU in training so far.
+2026-06-12 12:50:45.256 | INFO     | lib.trainer:train:447 - ********************************************************************************
+2026-06-12 12:58:23.729 | INFO     | lib.trainer:validate:730 - Validation: acc 0.815 | mIoU 0.317 | loss 1.1252
+2026-06-12 12:58:23.729 | INFO     | lib.trainer:validate:733 - IoU class 0 [unlabeled] = 0.000
+2026-06-12 12:58:23.729 | INFO     | lib.trainer:validate:733 - IoU class 1 [car] = 0.827
+2026-06-12 12:58:23.729 | INFO     | lib.trainer:validate:733 - IoU class 2 [bicycle] = 0.188
+2026-06-12 12:58:23.729 | INFO     | lib.trainer:validate:733 - IoU class 3 [motorcycle] = 0.085
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 4 [truck] = 0.054
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 5 [other-vehicle] = 0.152
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 6 [person] = 0.167
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 7 [bicyclist] = 0.244
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 8 [motorcyclist] = 0.002
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 9 [road] = 0.834
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 10 [parking] = 0.137
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 11 [sidewalk] = 0.637
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 12 [other-ground] = 0.008
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 13 [building] = 0.698
+2026-06-12 12:58:23.730 | INFO     | lib.trainer:validate:733 - IoU class 14 [fence] = 0.132
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:validate:733 - IoU class 15 [vegetation] = 0.717
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:validate:733 - IoU class 16 [trunk] = 0.181
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:validate:733 - IoU class 17 [terrain] = 0.733
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:validate:733 - IoU class 18 [pole] = 0.091
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:validate:733 - IoU class 19 [traffic-sign] = 0.147
+2026-06-12 12:58:23.731 | INFO     | lib.trainer:train:477 - ********************************************************************************
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:623 - Lr: 3.180e-03 | Epoch: [43][0/9565] | Loss 1.3485 (1.3485) | acc 0.724 (0.724) | IoU 0.251 (0.251)
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:668 - in_vol shape: torch.Size([2, 7, 512, 512])
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:669 - proj_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:670 - proj_labels shape: torch.Size([2, 512, 512])
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:671 - paste_mask shape: torch.Size([2, 1, 512, 512])
+2026-06-12 12:58:27.107 | INFO     | lib.trainer:train_epoch:674 - paste_mask sum: 0.0

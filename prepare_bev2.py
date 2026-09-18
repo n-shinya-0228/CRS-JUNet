@@ -9,7 +9,7 @@ import gc
 import gzip  # ★ Gzip圧縮モジュールを追加
 
 # 既存のモジュールをインポート
-from lib.utils.laserscan_Polar3 import SemLaserScan
+from lib.utils.laserscan_Polar4 import SemLaserScan
 
 def _build_lut(learning_map):
     maxkey = max(learning_map.keys())
@@ -43,7 +43,7 @@ def main():
         lpath = os.path.join(args.dataset, "sequences", seq, "labels")
         
         # 保存先フォルダを作成（sequences/00/polar_512_8ch など）
-        save_path = os.path.join(args.dataset, "sequences", seq, "polar_512_8ch")
+        save_path = os.path.join(args.dataset, "sequences", seq, "polar_512_prlb")
         os.makedirs(save_path, exist_ok=True)
 
         if not os.path.exists(vpath):

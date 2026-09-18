@@ -35,3 +35,54 @@ LiDARのレーザーは自車から放射状に飛びます。極座標の縦軸
 「そこで、**極座標の『距離軸』と『角度軸』の物理的意味に完全に合致する『Polar-CSWin（極座標・十字アテンション）』**を提案する」
 
 「さらに、ピクセル単体に『厚み（横情報）』を持たせることで、アテンションの局所的な情報不足を補った（先ほどの8chのアイデア）」
+
+1. BALViT（2D-3D変換とViTの融合）
+ごく最近（2025年3月）に公開されたばかりの非常に新しい論文です。2Dの強力なVision Transformerを、3D点群（BEVや距離画像）に適用するためのコードもすでに公開されています。
+
+論文名: Label-Efficient LiDAR Semantic Segmentation with 2D-3D Vision Transformer Adapters
+
+論文リンク (arXiv): https://arxiv.org/abs/2503.03299
+
+公式ソースコード (GitHub): https://github.com/robot-learning-freiburg/BALViT
+
+2. 階層型Transformerによるマルチビュー融合
+直交座標（BEV）と距離画像（Range View）の両方の視点をTransformerで融合させるアプローチで、IEEE Sensors Journal に掲載されました。
+
+論文名: Multiview Fusion Driven 3-D Point Cloud Semantic Segmentation Based on Hierarchical Transformer
+
+論文リンク (IEEE Xplore): https://ieeexplore.ieee.org/document/10309989
+(※こちらはIEEEのプラットフォームのため、所属機関のネットワーク等からアクセスすると全文PDFが読める場合があります)
+
+3. PC-BEV（極座標と直交座標のBEV融合）
+トップカンファレンスである AAAI で発表された研究です。西村さんのコードでも実装されていた「極座標（Polar）」と「直交座標（Cartesian）」のそれぞれの強みを組み合わせ、170倍の高速化を実現したフレームワークです。
+
+論文名: PC-BEV: An Efficient Polar-Cartesian BEV Fusion Framework for LiDAR Semantic Segmentation
+
+論文リンク (AAAI公式): https://ojs.aaai.org/index.php/AAAI/article/view/32709
+
+公式ソースコード (GitHub): https://github.com/skyshoumeng/PC-BEV
+
+1. 2D平面(BEV)から「3D極座標（Cylindrical Voxel）」への進化
+最近の極座標オンリーの研究は、単なる平面の鳥瞰図（BEV）ではなく、高さ（Z軸）の次元を残した**「円柱座標系（Cylindrical Voxel）」**をメインフレームに据えています。
+
+LVCA-Net (2025年12月発表)
+
+論文: LVCA-Net: Lightweight LiDAR Semantic Segmentation for Advanced Sensor-Based Perception...
+
+概要: 直交座標のボクセル（四角い箱による空間分割）を完全に廃止し、「Cylindrical Voxel Space（円柱状の空間分割）」のみでネットワークを構築した最新モデルです。遠距離の点がまばらになるLiDAR特有の弱点に対し、極座標空間上で直接機能する「Coordinate-Guided Attention（座標誘導型アテンション）」を組み込むことで、非常に軽量でありながら高精度なセグメンテーションを実現しています。
+
+2. 次世代タスク「3D Occupancy Prediction」の極座標化
+現在は単なる点群のセグメンテーションから、何もない空間も含めて世界がどう埋まっているかを予測する「Occupancy（占有グリッド）」タスクへと研究が移行していますが、ここでも極座標オンリーがブレイクスルーを生んでいます。
+
+OmniOcc (2026年1月発表)
+
+論文: OmniOcc: Cylindrical Voxel-Based Semantic Occupancy Prediction for Omnidirectional Vision Systems
+
+概要: 直交座標（Cartesian）で空間を区切ると、「遠くのスカスカな空間」にも「自車の目の前の重要な空間」と同じだけのメモリと計算量を使ってしまうという無駄を指摘した論文です。空間を円柱ボクセル（極座標）のみで区切れば、「自車の近くは解像度が高く（密）、遠くへ行くほど解像度が低くなる（疎）」という、自動運転の認識にとって最も理にかなった空間表現が自然に完成すると実証しました。
+
+3. 距離依存のスパース性（スカスカ問題）に特化したアテンション
+LCPSNet (2024年発表)
+
+論文: Instance Segmentation of LiDAR Point Clouds with Local Perception...
+
+概要: 複数の視点をFusionするのではなく、単一の極座標グリッド上のみで完結させるネットワークです。極座標特有の「遠くへ行くほど点が広がる」という現象に対して、距離に応じた重み付け（Local Perception Module）を極座標マップ上で直接行うことで、Cartesianの助けを借りずに物体（特に遠距離の車両や歩行者）の輪郭を正確に捉えることに成功しています。

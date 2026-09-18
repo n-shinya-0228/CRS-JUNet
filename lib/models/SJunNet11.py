@@ -535,7 +535,7 @@ class SJunNet11(nn.Module):
         self,
         in_channels: int = 7,     # ★ 5 から 7 に変更（特徴量の数）
         nclasses: int = 20,
-        drop: float = 0.3,
+        drop: float = 0.5,
         base_ch: int = 48,
         aspp_out: int = 256,
         swa_heads: int = 4,
@@ -568,21 +568,21 @@ class SJunNet11(nn.Module):
         # ---- lighter SWA: 2 blocks fixed (non-shift + shift) ----
         Wh, Ww = swa_window
         # ---- Polar CSWin (Cross-Shaped Window) ----
-        # 1ブロックの中で、縦(16x4)と横(4x16)を並列処理する
+        # 特徴量サイズ (32x32) に対して、窓が大きすぎないように (8, 4) と (4, 8) に縮小
         self.swa = nn.Sequential(
             # ブロック1: シフトなし
             PolarCSWinBlock(
                 aspp_out, 
-                window_r=(16, 4), window_a=(4, 16), 
+                window_r=(8, 4), window_a=(4, 8),   # ★ (16,4) -> (8,4) へ変更
                 heads=swa_heads, 
                 shift_r=(0, 0), shift_a=(0, 0)
             ),
-            # ブロック2: 半分シフト (円環シフトによる大域的ループ)
+            # ブロック2: 半分シフト
             PolarCSWinBlock(
                 aspp_out, 
-                window_r=(16, 4), window_a=(4, 16), 
+                window_r=(8, 4), window_a=(4, 8),   # ★ (16,4) -> (8,4) へ変更
                 heads=swa_heads, 
-                shift_r=(8, 2), shift_a=(2, 8)
+                shift_r=(4, 2), shift_a=(2, 4)      # ★ シフト量も窓の半分に変更
             ),
         )
 

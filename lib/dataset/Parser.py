@@ -1,14 +1,13 @@
-# Parser_BEV2.py
+# Parser_Polar2.py
 import os
 import torch
 from torch.utils.data import DataLoader
 
-# ★ 直交座標系の SemanticKitti をインポートする (ファイル名に合わせてください)
-from .SemanticKitti_BEV13 import SemanticKitti 
+from .SemanticKitti_Polar9 import SemanticKitti
 
 def bev_collate_fn(batch):
     """
-    SemanticKitti が返すタプルをバッチ化する関数。
+    SemanticKitti_Polar1 が返す16要素のタプルをバッチ化する関数。
     テンソル化すべき最初の3つ（特徴量、マスク、ラベル）だけスタックし、
     残りのダミーやパス情報はリストのまま返す。
     """
@@ -18,6 +17,8 @@ def bev_collate_fn(batch):
     mask_t        = torch.stack([b[1] for b in batch], dim=0)
     # [B, H, W]
     labels_t      = torch.stack([b[2] for b in batch], dim=0)
+
+    paste_mask_t = torch.stack([b[14] for b in batch], dim=0)
     
     # 互換性のためのリスト
     unproj_labels = [b[3] for b in batch]
@@ -25,6 +26,9 @@ def bev_collate_fn(batch):
     path_name     = [b[5] for b in batch]
     
     # trainer.py の unpack に合わせるためのダミー (Noneや0で埋める)
+    # trainer.py 側で unpack しているのは:
+    # in_vol, proj_mask, proj_labels, _, path_seq, path_name, _, _, proj_range, _, _, _, _, _, _, edge
+    
     dummy_list = [None] * len(batch)
     dummy_tensor = torch.zeros(len(batch))
     
@@ -32,8 +36,9 @@ def bev_collate_fn(batch):
         proj_tensor, mask_t, labels_t, unproj_labels, path_seq, path_name,
         dummy_list, dummy_list, dummy_tensor, dummy_list, 
         dummy_list, dummy_list, dummy_tensor, dummy_list, 
-        dummy_tensor, dummy_tensor
+        paste_mask_t, dummy_tensor
     )
+
 
 class Parser:
     """
@@ -54,12 +59,27 @@ class Parser:
         self.sensor = arch_cfg["dataset"]["sensor"]
         self.batch_size = arch_cfg["train"]["batch_size"]
         self.workers = arch_cfg["train"]["workers"]
+        self.copy_paste_prob = float(arch_cfg["train"].get("copy_paste_prob", 0.75))
         
         self.nclasses = len(self.learning_map_inv)
 
         self.train_sequences = data_cfg["split"]["train"]
         self.valid_sequences = data_cfg["split"]["valid"]
         self.test_sequences  = data_cfg["split"]["test"]
+
+        loader_kwargs = dict(
+            batch_size=self.batch_size,
+            num_workers=self.workers,
+            pin_memory=True,
+            collate_fn=bev_collate_fn,
+        )
+
+        if self.workers > 0:
+            loader_kwargs.update(
+            persistent_workers=True,
+            prefetch_factor=4
+            )
+
 
         # ============================================================
         # 1. Train Dataset & Loader
@@ -68,14 +88,12 @@ class Parser:
             root=self.root, sequences=self.train_sequences, labels=self.labels,
             color_map=self.color_map, learning_map=self.learning_map,
             learning_map_inv=self.learning_map_inv, sensor=self.sensor,
-            gt=self.gt, is_train=True # ★ Data Augmentation をオンにする
+            gt=self.gt, is_train=True, copy_paste_prob=self.copy_paste_prob # ★ Data Augmentation をオンにする
         )
 
         self.trainloader = DataLoader(
-            self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle_train,
-            num_workers=self.workers, pin_memory=True, drop_last=True,
-            collate_fn=bev_collate_fn # ★ 専用の結合関数を使う
-        )
+            self.train_dataset,shuffle=self.shuffle_train,drop_last=True,**loader_kwargs
+            )
 
         # ============================================================
         # 2. Valid Dataset & Loader
@@ -88,14 +106,25 @@ class Parser:
         )
 
         self.validloader = DataLoader(
-            self.valid_dataset, batch_size=self.batch_size, shuffle=False,
-            num_workers=self.workers, pin_memory=True, drop_last=False,
-            collate_fn=bev_collate_fn
-        )
+            self.valid_dataset,shuffle=False,drop_last=False,**loader_kwargs
+            )
 
         # ============================================================
         # 3. Test Dataset & Loader
         # ============================================================
+        test_loader_kwargs = dict(
+            batch_size=1,
+            num_workers=self.workers,
+            pin_memory=True,
+            collate_fn=bev_collate_fn,
+        )
+
+        if self.workers > 0:
+            test_loader_kwargs.update(
+            persistent_workers=True,
+            prefetch_factor=4
+            )
+
         if self.test_sequences:
             self.test_dataset = SemanticKitti(
                 root=self.root, sequences=self.test_sequences, labels=self.labels,
@@ -104,10 +133,8 @@ class Parser:
                 gt=False, is_train=False
             )
             self.testloader = DataLoader(
-                self.test_dataset, batch_size=1, shuffle=False,
-                num_workers=self.workers, pin_memory=True, drop_last=False,
-                collate_fn=bev_collate_fn
-            )
+                self.test_dataset,shuffle=False,drop_last=False,**test_loader_kwargs
+                )
         else:
             self.testloader = None
 
