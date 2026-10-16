@@ -1,0 +1,186 @@
+# Step C.4; training conditions identical to C.2/C.3.
+# Class references: original log precision (3 decimals, or 6 where available).
+train:
+  loss: focal_gamma
+  max_epochs: 70
+  lr: 0.002
+  min_lr: 1.0e-05
+  wup_epochs: 5
+  cos_epochs: 65
+  momentum: 0.9
+  lr_decay: 0.9
+  w_decay: 0.005
+  batch_size: 3
+  copy_paste_prob: 0.0
+  report_batch: 3000
+  early_stopping:
+    enabled: true
+    patience: 12
+    min_delta: 0.001
+    min_epochs: 30
+  report_epoch: 1
+  epsilon_w: 0.01
+  workers: 4
+model:
+  name: SJNet3_PointNet_Gated_Local3_SpatialAlpha
+  in_channels: 24
+  dropout: 0.3
+  bn_d: 0.01
+  use_mps: false
+post:
+  KNN:
+    use: true
+    params:
+      knn: 5
+      search: 5
+      sigma: 1.0
+      cutoff: 1.0
+dataset:
+  labels: SemanticKitti
+  scans: SemanticKitti
+  pointnet:
+    folder: pointnet_16ch
+    feature_dim: 16
+    max_radius: 51.2
+  sensor:
+    name: HDL64
+    type: spherical
+    img_prop:
+      width: 512
+      height: 512
+    img_means:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    img_stds:
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    fov_up: 3
+    fov_down: -23
+  max_points: 130000
+experiment:
+  name: Step C.4 - Gated PointNet Hybrid + Local3 + Spatial-aware Alpha
+  baseline_8ch_miou: 0.507
+  baseline_8ch_acc: 0.891
+  baseline_8ch_best_epoch: 90
+  baseline_8ch_log_dir: logs/SJNet3_48
+  baseline_8ch_reference_log: logs/SJNet3_48/log.txt
+  baseline_8ch_class_iou:
+    unlabeled: 0.0
+    car: 0.947
+    bicycle: 0.247
+    motorcycle: 0.313
+    truck: 0.645
+    other-vehicle: 0.306
+    person: 0.411
+    bicyclist: 0.492
+    motorcyclist: 0.0
+    road: 0.937
+    parking: 0.495
+    sidewalk: 0.802
+    other-ground: 0.009
+    building: 0.839
+    fence: 0.272
+    vegetation: 0.807
+    trunk: 0.432
+    terrain: 0.723
+    pole: 0.487
+    traffic-sign: 0.474
+  naive_hybrid_miou: 0.497
+  step_c1_miou: 0.497326
+  step_c1_best_epoch: 23
+  step_c1_class_iou:
+    bicycle: 0.255
+    motorcycle: 0.401
+    person: 0.423
+    bicyclist: 0.471
+    terrain: 0.802
+    vegetation: 0.835
+    truck: 0.541
+    parking: 0.367
+    car: 0.906
+    other-vehicle: 0.25
+  step_c1b_miou: 0.504596
+  step_c1b_best_epoch: 9
+  step_c1b_class_iou:
+    unlabeled: 0.0
+    car: 0.907366
+    bicycle: 0.238228
+    motorcycle: 0.365083
+    truck: 0.609712
+    other-vehicle: 0.357001
+    person: 0.411679
+    bicyclist: 0.454227
+    motorcyclist: 0.0
+    road: 0.927
+    parking: 0.49516
+    sidewalk: 0.793
+    other-ground: 0.007
+    building: 0.826
+    fence: 0.289
+    vegetation: 0.817396
+    trunk: 0.427
+    terrain: 0.790323
+    pole: 0.451
+    traffic-sign: 0.422
+  step_c2_miou: 0.508253
+  step_c2_best_epoch: 18
+  step_c2_reference_log: logs/SJNet3_PointNet_stepC2_local3_gated_lr2e3_bs3/log.txt
+  step_c2_class_iou:
+    unlabeled: 0.0
+    car: 0.912672
+    bicycle: 0.203021
+    motorcycle: 0.369755
+    truck: 0.674159
+    other-vehicle: 0.293603
+    person: 0.415712
+    bicyclist: 0.471364
+    motorcyclist: 0.0
+    road: 0.931
+    parking: 0.480234
+    sidewalk: 0.792
+    other-ground: 0.023
+    building: 0.831
+    fence: 0.276
+    vegetation: 0.809339
+    trunk: 0.429
+    terrain: 0.782028
+    pole: 0.479191
+    traffic-sign: 0.483528
+  clear_improvement_miou: 0.51
+  step_c3_miou: 0.505478
+  step_c3_best_epoch: 9
+  step_c3_best_alpha: 0.641107
+  step_c3_reference_log: logs/SJNet3_PointNet_stepC3_local3_alpha_gated_lr2e3_bs3/log.txt
+  step_c3_class_iou:
+    unlabeled: 0.0
+    car: 0.902709
+    bicycle: 0.286767
+    motorcycle: 0.385689
+    truck: 0.533154
+    other-vehicle: 0.315121
+    person: 0.436672
+    bicyclist: 0.453687
+    motorcyclist: 0.0
+    road: 0.926
+    parking: 0.469652
+    sidewalk: 0.788
+    other-ground: 0.018
+    building: 0.83
+    fence: 0.271
+    vegetation: 0.823857
+    trunk: 0.44
+    terrain: 0.801798
+    pole: 0.47173
+    traffic-sign: 0.450389
+diagnostics:
+  alpha_min_class_cells: 5
