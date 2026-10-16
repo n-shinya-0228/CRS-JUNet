@@ -1,0 +1,40 @@
+train:
+  loss: "xentropy"
+  max_epochs: 100
+  lr: 0.001
+  min_lr: 0.00002
+  w_decay: 0.01
+  batch_size: 2
+  workers: 4
+  report_epoch: 1
+  epsilon_w: 0.01
+  sphere_loss_weight: 0.3
+
+model:
+  name: "SphericalBEVFusion"
+  in_channels: 7
+  use_mps: False
+
+dataset:
+  labels: "SemanticKitti"
+  scans: "SemanticKitti"
+  sensor:
+    name: "HDL64"
+    type: "spherical"
+    img_prop:
+      width: 512
+      height: 64
+    img_means:
+      - 12.12
+      - 10.88
+      - 0.23
+      - -1.04
+      - 0.21
+    img_stds:
+      - 12.32
+      - 11.47
+      - 6.91
+      - 0.86
+      - 0.16
+    fov_up: 3.0
+    fov_down: -23.0

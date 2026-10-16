@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-08",
+  "implementation": "completed",
+  "internal_checks": "passed",
+  "full_resolution_forward": "passed",
+  "training": "blocked_missing_dataset",
+  "dataset_expected": "SemanticKitti/sequences",
+  "dataset_search": "No sequences directory found under /home/hirobe1110 (depth 5).",
+  "training_command": "python -m spherical_bev_fusion.train --dataset SemanticKitti",
+  "training_exit_code": 2,
+  "accuracy_results": null,
+  "note": "No real-data training or validation was performed; synthetic checks are not accuracy results.",
+  "check_environment": "/tmp/fusion128-env (CPU PyTorch)"
+}
