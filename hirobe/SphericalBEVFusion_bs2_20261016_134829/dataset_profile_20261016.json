@@ -1,0 +1,268 @@
+{
+  "timestamp_jst": "2026-10-16T14:06:51.257959+09:00",
+  "samples": 12,
+  "scan_indices": [
+    7117,
+    429,
+    10311,
+    8806,
+    6857,
+    6820,
+    196,
+    10881,
+    3605,
+    7590,
+    109,
+    15951
+  ],
+  "elapsed_seconds": 0.6992184500004441,
+  "mean_ms_per_scan": 58.268204166703676,
+  "method": "CPU-only cProfile of 12 actual training samples with original Copy-Paste/rotation/flip; separate probe, not timings injected into live Trainer",
+  "gpu_used": false,
+  "training_process_paused": false,
+  "training_sources_modified": false,
+  "torch_cpu_threads": 1,
+  "thread_environment": {
+    "OMP_NUM_THREADS": "4",
+    "MKL_NUM_THREADS": "4",
+    "OPENBLAS_NUM_THREADS": null
+  },
+  "process_threads": 4,
+  "stage_times": [
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/dataset.py",
+      "line": 65,
+      "function": "__getitem__",
+      "calls": 12,
+      "self_seconds": 0.024783428000000003,
+      "cumulative_seconds": 0.6418972740000001
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 133,
+      "function": "build_dual_projection",
+      "calls": 12,
+      "self_seconds": 0.026588931000000003,
+      "cumulative_seconds": 0.569485275
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 4,
+      "function": "_make_bev_projection",
+      "calls": 12,
+      "self_seconds": 0.26090486,
+      "cumulative_seconds": 0.355433638
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 82,
+      "function": "_make_spherical_projection",
+      "calls": 12,
+      "self_seconds": 0.162583155,
+      "cumulative_seconds": 0.18532778700000002
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 67,
+      "function": "_normalize_bev",
+      "calls": 12,
+      "self_seconds": 0.007669872,
+      "cumulative_seconds": 0.051633919
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/dataset.py",
+      "line": 31,
+      "function": "apply_copy_paste",
+      "calls": 9,
+      "self_seconds": 0.003023252,
+      "cumulative_seconds": 0.012169044
+    }
+  ],
+  "top_cumulative": [
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/dataset.py",
+      "line": 65,
+      "function": "__getitem__",
+      "calls": 12,
+      "self_seconds": 0.024783428000000003,
+      "cumulative_seconds": 0.6418972740000001
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 133,
+      "function": "build_dual_projection",
+      "calls": 12,
+      "self_seconds": 0.026588931000000003,
+      "cumulative_seconds": 0.569485275
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 4,
+      "function": "_make_bev_projection",
+      "calls": 12,
+      "self_seconds": 0.26090486,
+      "cumulative_seconds": 0.355433638
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 82,
+      "function": "_make_spherical_projection",
+      "calls": 12,
+      "self_seconds": 0.162583155,
+      "cumulative_seconds": 0.18532778700000002
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/projection.py",
+      "line": 67,
+      "function": "_normalize_bev",
+      "calls": 12,
+      "self_seconds": 0.007669872,
+      "cumulative_seconds": 0.051633919
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method torch.isfinite>",
+      "calls": 24,
+      "self_seconds": 0.044987829,
+      "cumulative_seconds": 0.044987829
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method numpy.fromfile>",
+      "calls": 42,
+      "self_seconds": 0.025450494,
+      "cumulative_seconds": 0.026026798
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'at' of 'numpy.ufunc' objects>",
+      "calls": 84,
+      "self_seconds": 0.021036841,
+      "cumulative_seconds": 0.021036841
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'copy' of 'numpy.ndarray' objects>",
+      "calls": 90,
+      "self_seconds": 0.020948474,
+      "cumulative_seconds": 0.020948474
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'astype' of 'numpy.ndarray' objects>",
+      "calls": 102,
+      "self_seconds": 0.020075433,
+      "cumulative_seconds": 0.020075433
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/linalg/linalg.py",
+      "line": 2383,
+      "function": "norm",
+      "calls": 12,
+      "self_seconds": 0.0027104200000000003,
+      "cumulative_seconds": 0.017915626
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'reduce' of 'numpy.ufunc' objects>",
+      "calls": 42,
+      "self_seconds": 0.016223928000000002,
+      "cumulative_seconds": 0.016223928000000002
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/core/fromnumeric.py",
+      "line": 53,
+      "function": "_wrapfunc",
+      "calls": 144,
+      "self_seconds": 0.000255568,
+      "cumulative_seconds": 0.014651856000000001
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/core/numeric.py",
+      "line": 274,
+      "function": "full",
+      "calls": 120,
+      "self_seconds": 0.013379101000000001,
+      "cumulative_seconds": 0.013626972000000001
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/core/fromnumeric.py",
+      "line": 2100,
+      "function": "clip",
+      "calls": 120,
+      "self_seconds": 0.00021290000000000002,
+      "cumulative_seconds": 0.012649673
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'clip' of 'numpy.ndarray' objects>",
+      "calls": 120,
+      "self_seconds": 0.00010773600000000001,
+      "cumulative_seconds": 0.012196088
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/spherical_bev_fusion/dataset.py",
+      "line": 31,
+      "function": "apply_copy_paste",
+      "calls": 9,
+      "self_seconds": 0.003023252,
+      "cumulative_seconds": 0.012169044
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/core/_methods.py",
+      "line": 90,
+      "function": "_clip",
+      "calls": 120,
+      "self_seconds": 0.012088352,
+      "cumulative_seconds": 0.012088352
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'all' of 'torch._C.TensorBase' objects>",
+      "calls": 24,
+      "self_seconds": 0.011067337,
+      "cumulative_seconds": 0.011067337
+    },
+    {
+      "file": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy/lib/npyio.py",
+      "line": 282,
+      "function": "load",
+      "calls": 18,
+      "self_seconds": 0.000310487,
+      "cumulative_seconds": 0.008296147
+    }
+  ],
+  "caveats": [
+    "Separate CPU probe runs concurrently with training and includes profiler overhead.",
+    "Cumulative stage times overlap; do not add parent and child timings.",
+    "This identifies dataset-side cost, not the critical path of the live GPU pipeline."
+  ],
+  "threadpools": [
+    {
+      "user_api": "blas",
+      "internal_api": "openblas",
+      "num_threads": 4,
+      "prefix": "libopenblas",
+      "filepath": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/numpy.libs/libopenblas64_p-r0-5007b62f.3.23.dev.so",
+      "version": "0.3.23.dev",
+      "threading_layer": "pthreads",
+      "architecture": "Prescott"
+    },
+    {
+      "user_api": "openmp",
+      "internal_api": "openmp",
+      "num_threads": 1,
+      "prefix": "libgomp",
+      "filepath": "/home/ns/CRS-JUNet/.venv/lib/python3.10/site-packages/torch/lib/libgomp.so.1",
+      "version": null
+    }
+  ]
+}

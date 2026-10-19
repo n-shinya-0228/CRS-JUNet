@@ -1,0 +1,27 @@
+{
+  "timestamp_jst": "2026-10-16T14:07:22.876115+09:00",
+  "epochs_completed": 1,
+  "max_epochs": 100,
+  "completed_epoch_timestamps": {
+    "1": {
+      "train": "2026-10-16T13:59:15.532000+09:00",
+      "validation": "2026-10-16T14:00:15.438000+09:00"
+    }
+  },
+  "mean_epoch_seconds": 705.979187,
+  "mean_training_seconds": 646.073187,
+  "mean_validation_seconds": 59.906,
+  "training_phase_fraction": 0.915144807236364,
+  "train_batches_per_epoch": 9565,
+  "validation_batches_per_epoch": 2036,
+  "estimated_total_seconds": 70597.91870000001,
+  "estimated_total_hours": 19.610532972222224,
+  "estimated_remaining_seconds": 69464.501398,
+  "estimated_finish_jst": "2026-10-17T09:25:07.377513+09:00",
+  "basis": "Linear extrapolation of completed epoch wall time including training and validation, from actual launch and log timestamps.",
+  "caveats": [
+    "Estimate only; based on the completed epochs available at this timestamp.",
+    "First epoch includes initialization; checkpoint write time after the validation log is not separately timed.",
+    "Data augmentation, caching, other workloads and later epochs can change speed."
+  ]
+}

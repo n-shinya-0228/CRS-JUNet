@@ -1,0 +1,118 @@
+SphericalBEVFusion: Used Files And Measured Runtime
+================================================
+
+Run: hirobe/SphericalBEVFusion_bs2_20261016_134829
+Training PID at measurement: 15263
+Started: 2026-10-16 13:48:29 JST
+Settings: batch_size=2, max_epochs=100, lr=.001, workers=4, float32.
+Model: 246712 parameters; BEV 7x512x512; sphere 6x64x512.
+Checkpoint resume/pretrained: none; training starts at epoch index 0.
+The original used_files.txt remains the unmodified sha256sum manifest.
+This .text file is a dated measurement snapshot, not a live dashboard.
+
+Used Source Files (SHA256)
+-------------------------
+71276f880d16f3d2cd5cc78467fce78198571882ea0848e4af1260d46509207d  spherical_bev_fusion/model.py
+417521cbb0b0a2b10e785f16e67e5f43ab49ffd46f3a3d75dee6a8f04640e0fe  spherical_bev_fusion/dataset.py
+3964ee29ce1c2d1d2ec3950d8380aa5dd620fac51082a1a130f7482c31805393  spherical_bev_fusion/projection.py
+4979d4116633c123b60bd2daa82b2b44ee86d499ef35ba59be3d57c1677b30ee  spherical_bev_fusion/train.py
+f6f69b0526004d04aea4bcff200e482994a0d8b162b98ea1a026555835691875  spherical_bev_fusion/trainer.py
+86e6c3210551950062423d9813434598f4e9e6c7c54a93835b3aa4a6a9d1480b  spherical_bev_fusion/config.yaml
+2db33f6059f459e5012d46d87b383150a39b113fc4fd3f57b7af50ced6641b03  spherical_bev_fusion/labels.yaml
+
+GPU And CPU Measurements
+------------------------
+Window: 2026-10-16 14:05:19 to 14:06:00 JST, epoch 2 training phase.
+Method: 40 samples at approximately one-second intervals (41.34 s total).
+GPU: NVIDIA GeForce RTX 5060 Ti; only training PID 15263 was listed as a
+CUDA compute process. GPU counters are device-wide, including display use.
+
+GPU utilization: mean 91.475%, minimum 90%, maximum 93%.
+GPU memory-controller busy: mean 59.875% (not memory capacity usage).
+GPU memory used: 2939 MiB / 16311 MiB (approximately 2.87 / 15.93 GiB).
+GPU temperature: mean 50.575 C, range 50-51 C.
+GPU power: mean 107.395 W, range 106.72-108.01 W.
+
+CPU logical processors: 20; training process affinity permits all 20.
+CPU percentages below use Linux/WSL counters, not all Windows-host apps.
+Training main process: mean 110.108% with one logical CPU defined as 100%.
+DataLoader descendants combined: mean 690.170% on the same scale.
+Main process plus DataLoader: mean 800.278%, or about 8.003 logical CPUs.
+Normalized across all 20 CPUs: mean 40.014%, range 39.274-40.752%.
+Linux/WSL system-wide CPU busy: mean 40.575%, range 39.690-41.358%.
+System I/O wait: mean 0.358%, range 0.241-0.576%.
+Training process-tree physical reads: mean 70.114 MiB/s.
+Training process-tree application reads: mean 70.588 MiB/s.
+Native numerical-library threads can make a worker use more than one CPU.
+
+Raw resource data: resource_samples_20261016.json
+
+Approximate Training Time
+-------------------------
+Estimate calculated: 2026-10-16 14:07:22 JST.
+Basis: first completed epoch, using launch.json and actual log timestamps.
+Training scans: 19130; validation scans: 4071 (sequence 08).
+Train batches per epoch: 9565; validation batches per epoch: 2036.
+
+Launch:                 2026-10-16 13:48:29.459 JST
+Epoch 1 train complete: 2026-10-16 13:59:15.532 JST
+Epoch 1 valid complete: 2026-10-16 14:00:15.438 JST
+
+First training phase: 646.073 s, approximately 10 min 46 s.
+First validation phase: 59.906 s, approximately 1 min.
+First full epoch: 705.979 s, approximately 11 min 46 s.
+Training phase share of epoch wall time: 91.514%; validation: 8.486%.
+Training phase includes data loading, transfers, forward/backward,
+gradient clipping, optimizer and metric updates, plus initial startup.
+
+Estimated 100-epoch total: 70597.919 s = 19 h 36 min 38 s (about 20 h).
+Estimated remaining at 14:07:22 JST: 19 h 17 min 45 s.
+Estimated finish: 2026-10-17 around 09:25 JST.
+These are rough linear extrapolations, not guaranteed completion times.
+Only one completed epoch was available. Initialization, file caching,
+augmentation and other workloads can change subsequent epoch times.
+Checkpoint writes after the validation log are not timed separately.
+
+Machine-readable estimate: timing_estimate_20261016.json
+
+Measured Runtime Contributors
+-----------------------------
+1. The training phase, including its data pipeline, accounts for 91.514%
+   of the observed epoch. Validation accounts for the remaining 8.486%.
+   Batch size 2 gives 9565 optimizer steps per epoch and 956500 steps over
+   100 epochs. This step count directly contributes to the total duration.
+
+2. The dataset rebuilds both projections from raw point clouds in every
+   __getitem__ call: dataset.py:88 -> projection.py:133. A CPU-only cProfile
+   probe of 12 actual training scans, with the original augmentation and
+   Copy-Paste enabled, measured these cumulative times:
+
+   Dataset __getitem__ total:       0.641897 s (100% of dataset time).
+   build_dual_projection:           0.569485 s (88.72% of dataset time).
+   _make_bev_projection:            0.355434 s (55.37% of dataset time).
+   _make_spherical_projection:      0.185328 s (28.87% of dataset time).
+   apply_copy_paste:                0.012169 s (1.90% of dataset time).
+
+   Projection construction is the main measured dataset-side cost;
+   Copy-Paste is not the main dataset-side cost in this small sample.
+   The code performs these projections again each epoch rather than
+   reading the precomputed BEV/PointNet tensors used by earlier runs.
+
+   These are nested cumulative times: do not add parent and child rows.
+   Percentages describe dataset preparation only, NOT full-training time.
+   The separate probe ran on CPU concurrently with training, includes
+   profiler overhead, and does not prove DataLoader is the critical path.
+
+3. Live GPU utilization stayed at 90-93% in the sampling window. The
+   device was active most of the time rather than mostly idle waiting
+   for data. No individual GPU operator is identified as the bottleneck
+   from these utilization counters.
+
+CPU probe details: dataset_profile_20261016.json
+
+Measurement Safety
+------------------
+Training was not stopped or restarted. No model/config/dataset/trainer
+source or training setting was changed. The dataset probe used no GPU,
+loaded no training checkpoint and performed no optimizer updates.
+Resource sampling finished before the separate CPU profiling probe.
