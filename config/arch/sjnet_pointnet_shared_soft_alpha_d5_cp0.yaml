@@ -1,0 +1,65 @@
+train:
+  loss: focal_gamma
+  max_epochs: 70
+  lr: 0.002
+  min_lr: 0.00001
+  wup_epochs: 5
+  cos_epochs: 65
+  momentum: 0.9
+  lr_decay: 0.9
+  w_decay: 0.005
+  batch_size: 3
+  micro_batch_size: 3
+  copy_paste_prob: 0.0
+  report_batch: 3000
+  report_epoch: 1
+  epsilon_w: 0.01
+  workers: 4
+  use_ema: true
+  ema_decay: 0.99
+  amp: true
+  amp_dtype: bfloat16
+  seed: 0
+  early_stopping:
+    enabled: true
+    patience: 12
+    min_delta: 0.001
+    min_epochs: 30
+model:
+  name: SJNet3_PointNet_Gated_Local3_SharedSoftAlpha
+  in_channels: 24
+  dropout: 0.3
+  bn_d: 0.01
+  use_mps: false
+post:
+  KNN:
+    use: true
+    params:
+      knn: 5
+      search: 5
+      sigma: 1.0
+      cutoff: 1.0
+dataset:
+  labels: SemanticKitti
+  scans: SemanticKitti
+  pointnet:
+    folder: pointnet_16ch
+    feature_dim: 16
+    max_radius: 51.2
+  sensor:
+    name: HDL64
+    type: spherical
+    img_prop:
+      width: 512
+      height: 512
+    img_means: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    img_stds: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    fov_up: 3
+    fov_down: -23
+  max_points: 130000
+experiment:
+  name: Step D.5 - Shared-weight Two-pass Soft Alpha Scratch
+  independent_test: false
+  pretrained_initialization: false
+  global_stage1_alpha: 1.2
+  alpha_temperature: 1.0
