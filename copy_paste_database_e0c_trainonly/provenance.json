@@ -1,0 +1,50 @@
+{
+  "schema": "e0c.instance.v1",
+  "complete": true,
+  "started": "2026-10-23T06:00:41.560205+00:00",
+  "seed": 0,
+  "git_commit": "b751d3217ee1d1ba310ba646f8afaedcfde0f56e",
+  "config": {
+    "schema": "e0c.instance.v1",
+    "sequences": [
+      "00",
+      "01",
+      "02",
+      "03",
+      "04",
+      "05",
+      "06",
+      "07",
+      "09",
+      "10"
+    ],
+    "classes": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "instance_zero": "exclude",
+    "mixed_raw": "exclude_whole_instance",
+    "seed": 0,
+    "fragmentation_voxel_m": {
+      "small": 0.6,
+      "large": 1.2
+    },
+    "largest_component_min": 0.9,
+    "isolated_outlier_max": 0.05
+  },
+  "config_sha256": "ebdc652ef8172709f6c912e59063c04a6d55e994dbb130a768138218a1475245",
+  "code_hashes": {
+    "build_copy_paste_database_e0c.py": "661a348dacf99ab359ea08643b9b73d34da9d8f2ac54a702ca25477085c563b7",
+    "lib/utils/raw_point_copy_paste_e0c.py": "0432a184eb0a22033adc2ef19d9db947eecb1b951cbd5222be1a673665fb2785",
+    "lib/utils/raw_point_copy_paste_e0b.py": "c4022a594f8a113ca58cc5b1f7e333edff72d8c6bb75fbf3e9c9c84b08fe2cca",
+    "config/labels/semantic-kitti.yaml": "2db33f6059f459e5012d46d87b383150a39b113fc4fd3f57b7af50ced6641b03"
+  },
+  "dataset_root": "/home/ns/CRS-JUNet/SemanticKitti",
+  "finished": "2026-10-23T06:06:40.265289+00:00",
+  "source_scans": 19130,
+  "manifest_sha256": "4f4f885b73a0294e2a477f1fbf81f862391233212e23718cd0c18405b9ff78b2",
+  "donor_count": 11274
+}

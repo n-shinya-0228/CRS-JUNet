@@ -1,0 +1,413 @@
+{
+  "statistics": {
+    "2": {
+      "candidates": 6738,
+      "passed": 2034,
+      "failed": 4704,
+      "valid_instance_rate": 0.9884238646482636,
+      "rejection_reasons": {
+        "instance_zero_not_separable": 78,
+        "insufficient_class_specific_points": 4184,
+        "incomplete_length": 1843,
+        "incomplete_width": 2176,
+        "incomplete_height": 2481,
+        "isolated_outliers_gt_5pct": 571,
+        "fragmented_instance_support": 379,
+        "mixed_raw_semantic_ids": 483,
+        "filename_content_mismatch": 483,
+        "mixed_learning_classes": 483,
+        "oversized_or_merged_width": 333,
+        "oversized_or_merged_length": 408,
+        "oversized_or_merged_height": 285
+      },
+      "source_sequences": {
+        "00": 1287,
+        "02": 77,
+        "03": 91,
+        "05": 70,
+        "06": 311,
+        "07": 141,
+        "09": 30,
+        "10": 27
+      },
+      "distributions": {
+        "points": [
+          30.0,
+          50.0,
+          82.0,
+          140.0,
+          1151.0
+        ],
+        "length": [
+          0.614296955059812,
+          1.467143289165399,
+          1.66605324670478,
+          1.802905136192059,
+          2.6312975020996188
+        ],
+        "width": [
+          0.16717822864981977,
+          0.3819973382670391,
+          0.47205165973475416,
+          0.5705649659061169,
+          1.1350195355255281
+        ],
+        "height": [
+          0.4549283981323242,
+          0.8467942774295807,
+          0.9684723615646362,
+          1.072027862071991,
+          1.5367457866668701
+        ]
+      }
+    },
+    "3": {
+      "candidates": 3846,
+      "passed": 1510,
+      "failed": 2336,
+      "valid_instance_rate": 0.9971398855954238,
+      "rejection_reasons": {
+        "insufficient_class_specific_points": 1617,
+        "incomplete_length": 852,
+        "incomplete_width": 844,
+        "incomplete_height": 933,
+        "mixed_raw_semantic_ids": 731,
+        "filename_content_mismatch": 731,
+        "oversized_or_merged_length": 636,
+        "oversized_or_merged_height": 223,
+        "mixed_learning_classes": 731,
+        "fragmented_instance_support": 408,
+        "isolated_outliers_gt_5pct": 187,
+        "instance_zero_not_separable": 11,
+        "oversized_or_merged_width": 379
+      },
+      "source_sequences": {
+        "00": 1017,
+        "02": 26,
+        "05": 13,
+        "06": 33,
+        "07": 160,
+        "09": 202,
+        "10": 59
+      },
+      "distributions": {
+        "points": [
+          40.0,
+          99.0,
+          211.5,
+          496.0,
+          4986.0
+        ],
+        "length": [
+          0.7076267714668714,
+          1.6308155759860568,
+          1.849825808245027,
+          2.1285808109047184,
+          3.277085435322726
+        ],
+        "width": [
+          0.24949372065699213,
+          0.5440330337007169,
+          0.6535555903940123,
+          0.7855384033702113,
+          1.5856378715767456
+        ],
+        "height": [
+          0.5053843259811401,
+          1.0740666389465332,
+          1.2062432169914246,
+          1.3429944217205048,
+          1.5876004695892334
+        ]
+      }
+    },
+    "4": {
+      "candidates": 2449,
+      "passed": 1241,
+      "failed": 1208,
+      "valid_instance_rate": 0.9661086157615353,
+      "rejection_reasons": {
+        "instance_zero_not_separable": 83,
+        "insufficient_class_specific_points": 638,
+        "incomplete_length": 248,
+        "incomplete_width": 193,
+        "incomplete_height": 245,
+        "fragmented_instance_support": 153,
+        "isolated_outliers_gt_5pct": 15,
+        "oversized_or_merged_width": 240,
+        "mixed_raw_semantic_ids": 249,
+        "filename_content_mismatch": 249,
+        "oversized_or_merged_length": 249,
+        "mixed_learning_classes": 249,
+        "rider_vehicle_alignment_metadata_missing": 1,
+        "oversized_or_merged_height": 5
+      },
+      "source_sequences": {
+        "00": 181,
+        "05": 237,
+        "06": 436,
+        "07": 87,
+        "09": 218,
+        "10": 82
+      },
+      "distributions": {
+        "points": [
+          150.0,
+          289.0,
+          771.0,
+          2393.0,
+          38177.0
+        ],
+        "length": [
+          2.5720710166458467,
+          5.104792779874845,
+          6.6352985014790296,
+          7.4086043731914835,
+          10.964946570515504
+        ],
+        "width": [
+          0.9403415667091537,
+          2.349144575358353,
+          2.651230426475524,
+          2.892455320269717,
+          3.495099158217729
+        ],
+        "height": [
+          1.2400705814361572,
+          2.0898897647857666,
+          2.294146776199341,
+          2.5739502906799316,
+          3.498457908630371
+        ]
+      }
+    },
+    "5": {
+      "candidates": 7125,
+      "passed": 3607,
+      "failed": 3518,
+      "valid_instance_rate": 0.9890526315789474,
+      "rejection_reasons": {
+        "insufficient_class_specific_points": 3144,
+        "incomplete_length": 689,
+        "incomplete_width": 1036,
+        "incomplete_height": 1421,
+        "isolated_outliers_gt_5pct": 162,
+        "instance_zero_not_separable": 78,
+        "fragmented_instance_support": 249,
+        "oversized_or_merged_width": 65,
+        "oversized_or_merged_height": 12,
+        "mixed_raw_semantic_ids": 248,
+        "filename_content_mismatch": 248,
+        "oversized_or_merged_length": 122,
+        "mixed_learning_classes": 248
+      },
+      "source_sequences": {
+        "00": 777,
+        "01": 43,
+        "02": 97,
+        "03": 54,
+        "05": 537,
+        "06": 1273,
+        "07": 243,
+        "09": 548,
+        "10": 35
+      },
+      "distributions": {
+        "points": [
+          100.0,
+          179.0,
+          351.0,
+          982.0,
+          23676.0
+        ],
+        "length": [
+          1.0062186368539434,
+          2.8776982336167287,
+          3.838326944105998,
+          5.3493313299106795,
+          19.692243506412442
+        ],
+        "width": [
+          0.4236231541631527,
+          1.583781116651053,
+          1.984611175200628,
+          2.372761134535888,
+          3.4964914042492286
+        ],
+        "height": [
+          0.7003042697906494,
+          1.42513507604599,
+          1.990964412689209,
+          2.348335027694702,
+          3.492443561553955
+        ]
+      }
+    },
+    "6": {
+      "candidates": 7933,
+      "passed": 2882,
+      "failed": 5051,
+      "valid_instance_rate": 0.9289045758225135,
+      "rejection_reasons": {
+        "insufficient_class_specific_points": 3901,
+        "incomplete_width": 1128,
+        "incomplete_height": 2989,
+        "instance_zero_not_separable": 564,
+        "incomplete_length": 733,
+        "oversized_or_merged_length": 302,
+        "isolated_outliers_gt_5pct": 186,
+        "fragmented_instance_support": 128,
+        "oversized_or_merged_width": 31,
+        "mixed_raw_semantic_ids": 62,
+        "filename_content_mismatch": 62,
+        "mixed_learning_classes": 24,
+        "oversized_or_merged_height": 9
+      },
+      "source_sequences": {
+        "00": 568,
+        "02": 274,
+        "03": 24,
+        "05": 481,
+        "06": 114,
+        "07": 371,
+        "09": 447,
+        "10": 603
+      },
+      "distributions": {
+        "points": [
+          30.0,
+          53.0,
+          94.0,
+          213.0,
+          2143.0
+        ],
+        "length": [
+          0.2879499096810583,
+          0.5499982367552296,
+          0.642230260123198,
+          0.7605545836375864,
+          1.1998868298896086
+        ],
+        "width": [
+          0.12238164769356942,
+          0.3808451380017138,
+          0.47035836720175833,
+          0.5542393826211934,
+          0.8998317578839354
+        ],
+        "height": [
+          0.8040767908096313,
+          1.1852387487888336,
+          1.4854648113250732,
+          1.6009907126426697,
+          2.043181896209717
+        ]
+      }
+    }
+  },
+  "mixed_instance_semantics": {
+    "[253, 255]": 3,
+    "[15, 30]": 237,
+    "[10, 253]": 48,
+    "[10, 11]": 619,
+    "[15, 253]": 68,
+    "[252, 253]": 40,
+    "[30, 253]": 24,
+    "[15, 20]": 319,
+    "[20, 253]": 25,
+    "[11, 30]": 79,
+    "[20, 254]": 128,
+    "[252, 254]": 208,
+    "[11, 20]": 272,
+    "[18, 20, 252]": 7,
+    "[20, 252]": 113,
+    "[18, 252]": 182,
+    "[10, 13, 30, 252, 254]": 13,
+    "[10, 30, 252]": 48,
+    "[10, 13, 30, 252]": 5,
+    "[13, 30, 252]": 9,
+    "[13, 252]": 18,
+    "[10, 20]": 36,
+    "[11, 254]": 57,
+    "[30, 252]": 86,
+    "[15, 253, 254]": 1,
+    "[15, 254]": 41,
+    "[30, 254]": 38,
+    "[30, 257]": 4,
+    "[18, 30]": 208,
+    "[15, 18, 30]": 2,
+    "[10, 11, 20]": 90,
+    "[10, 15, 20]": 16,
+    "[10, 11, 15, 20]": 66,
+    "[10, 15]": 5,
+    "[10, 11, 15]": 1,
+    "[10, 11, 252]": 32,
+    "[15, 30, 254]": 1,
+    "[11, 252]": 88,
+    "[20, 30]": 91,
+    "[253, 258]": 1,
+    "[18, 30, 254]": 39,
+    "[11, 18, 30, 254]": 39,
+    "[11, 18, 254]": 9,
+    "[11, 30, 254]": 2,
+    "[15, 20, 254]": 62,
+    "[252, 258]": 35,
+    "[10, 30]": 241,
+    "[11, 252, 254]": 10,
+    "[10, 11, 254]": 15,
+    "[10, 254]": 108,
+    "[11, 18]": 13,
+    "[11, 18, 30]": 3,
+    "[30, 252, 254]": 69,
+    "[18, 254]": 1,
+    "[10, 20, 30]": 7,
+    "[11, 15, 254]": 9
+  },
+  "rider_instance_compositions": {
+    "[8]": 556,
+    "[7, 8]": 3,
+    "[7]": 1394,
+    "[1, 7]": 88,
+    "[3, 7]": 68,
+    "[6, 7]": 24,
+    "[5, 7]": 25,
+    "[3, 6, 7]": 1,
+    "[4, 7]": 1
+  },
+  "riders_included": false,
+  "rider_reason": "No authoritative rider/vehicle association; proximity is insufficient",
+  "completeness": "All observed points of one valid instance; unseen physical surfaces cannot be guaranteed",
+  "source_scans": 19130,
+  "donor_count": 11274,
+  "config": {
+    "schema": "e0c.instance.v1",
+    "sequences": [
+      "00",
+      "01",
+      "02",
+      "03",
+      "04",
+      "05",
+      "06",
+      "07",
+      "09",
+      "10"
+    ],
+    "classes": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "instance_zero": "exclude",
+    "mixed_raw": "exclude_whole_instance",
+    "seed": 0,
+    "fragmentation_voxel_m": {
+      "small": 0.6,
+      "large": 1.2
+    },
+    "largest_component_min": 0.9,
+    "isolated_outlier_max": 0.05
+  }
+}

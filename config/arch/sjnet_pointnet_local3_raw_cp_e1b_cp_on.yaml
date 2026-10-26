@@ -1,0 +1,56 @@
+train:
+  loss: focal_gamma
+  max_epochs: 70
+  lr: 0.002
+  min_lr: 1.0e-05
+  wup_epochs: 5
+  cos_epochs: 65
+  w_decay: 0.005
+  batch_size: 3
+  report_batch: 3000
+  report_epoch: 1
+  epsilon_w: 0.01
+  workers: 4
+  seed: 0
+  amp_dtype: bfloat16
+  use_ema: true
+  ema_decay: 0.99
+  gradient_clip: 5.0
+  early_stopping:
+    enabled: true
+    patience: 12
+    min_delta: 0.001
+    min_epochs: 30
+model:
+  name: SJNet3_PointNet_Gated_Local3
+  in_channels: 24
+  dropout: 0.3
+dataset:
+  pointnet:
+    folder: pointnet_16ch
+    feature_dim: 16
+    max_radius: 51.2
+    encoder: point_encoder_runs/best_point_encoder.pth
+  sensor:
+    img_prop:
+      width: 512
+      height: 512
+    fov_up: 3
+    fov_down: -23
+copy_paste:
+  enabled: true
+  probability: 0.5
+  max_objects_per_scan: 1
+  max_candidate_trials: 10
+  donor_database: copy_paste_database_e0c_trainonly
+  sampling: balanced_eligible_classes
+  raw_point_regeneration: true
+  pointnet_encoder_frozen: true
+dropout_policy: legacy_denoising
+post:
+  KNN:
+    use: false
+experiment:
+  recipe: Reconstructed C.2 Recipe with recovered historical methods
+  seed: 0
+
