@@ -6,7 +6,7 @@
 
 同じ点群から両投影を作成し、CNNの各分岐で128次元まで復元します。BEV代表点と球面投影の最近点が一致する位置で球面特徴をサンプリングし、有効マスクを掛けてから`bev_features + sphere_on_bev`で加算します。融合直後の1×1畳み込みでクラス分類します。対応のないBEVセルではBEV特徴を使用します。球面分岐には補助損失を設けています。
 
-Polar3のcopy-pasteを共有点群に適用し、回転・反転も投影前に行うことで両投影の整合を維持します。Polar3の投影後のroll・dropoutと厳密に同じ拡張ではありません。データは既存と同じSemanticKITTIで、ラベル対応・学習/検証分割は既存の`semantic-kitti.yaml`をコピーしています。検証は08、未ラベルのテスト分割を学習や精度算出に使用しません。
+現在はCopy-Pasteを既定で無効にしています（`dataset.copy_paste: false`）。回転・反転は投影前に共通の点群へ適用し、両投影の整合を維持します。Copy-Pasteの処理は明示的に`copy_paste: true`を指定した場合だけ有効になります。Polar3の投影後のroll・dropoutと厳密に同じ拡張ではありません。データは既存と同じSemanticKITTIで、ラベル対応・学習/検証分割は既存の`semantic-kitti.yaml`をコピーしています。検証は08、未ラベルのテスト分割を学習や精度算出に使用しません。
 
 リポジトリルートから実行します。
 
@@ -33,3 +33,15 @@ python -m spherical_bev_fusion.train --dataset SemanticKitti --evaluate --pretra
 ```bash
 /tmp/fusion128-env/bin/python -m spherical_bev_fusion.train --dataset /path/to/SemanticKitti
 ```
+
+## Copy-Pasteなしの新規学習
+
+既定の`config.yaml`でもCopy-Pasteは無効です。以前の結果と分けて保存します。
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python -B -m spherical_bev_fusion.train \
+  --dataset SemanticKitti/ \
+  --log spherical_bev_fusion/runs/SphericalBEVFusion_NoCopyPaste_bs2
+```
+
+学習を再開せず最初から実行するため、`--resume`と`--pretrained`は指定しません。

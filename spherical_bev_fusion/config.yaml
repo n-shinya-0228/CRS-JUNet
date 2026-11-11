@@ -16,6 +16,7 @@ model:
   use_mps: False
 
 dataset:
+  copy_paste: false
   labels: "SemanticKitti"
   scans: "SemanticKitti"
   sensor:

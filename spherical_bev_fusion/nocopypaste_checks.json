@@ -1,0 +1,14 @@
+{
+  "static_checks": "passed",
+  "copy_paste_gate_disabled": "passed (forced gate, no PyTorch execution)",
+  "other_dataset_code_unchanged": true,
+  "model_projection_trainer_train_config_labels_unchanged": true,
+  "syntax": "passed",
+  "real_data_loading": "not run: dataset absent",
+  "forward_loss_backward": "not run: PyTorch and dataset absent",
+  "full_training_started": false,
+  "previous_seed": "no fixed training seed in current code; unchanged",
+  "prior_run_settings": "prior run arch_cfg.yaml and data_cfg.yaml unavailable here; historical equality not independently verified",
+  "outside_files_changed": [],
+  "planned_output_exists": false
+}
