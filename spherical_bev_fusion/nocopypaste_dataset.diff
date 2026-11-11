@@ -1,0 +1,38 @@
+--- dataset.py before
++++ dataset.py after
+@@ -9,7 +9,7 @@
+ 
+ 
+ class DualProjectionDataset(Dataset):
+-    def __init__(self, root, sequences, data, sensor, training=False):
++    def __init__(self, root, sequences, data, sensor, training=False, copy_paste=True):
+         self.files = []
+         for seq in sequences:
+             folder = Path(root) / "sequences" / f"{int(seq):02d}" / "velodyne"
+@@ -18,6 +18,7 @@
+                 raise FileNotFoundError(f"SemanticKITTI scans missing: {folder}")
+             self.files.extend(files)
+         self.training = training
++        self.copy_paste = copy_paste
+         self.learning_map = data["learning_map"]
+         self.database_files = glob.glob(str(Path(__file__).resolve().parents[1] / "copy_paste_database" / "*.npy"))
+         self.sensor = dict(height=sensor["img_prop"]["height"],
+@@ -71,7 +72,7 @@
+             raise ValueError(f"Scan/label length mismatch: {path}")
+         points, remissions = scan[:, :3].copy(), scan[:, 3:4].copy()
+         labels = labels.reshape(-1, 1)
+-        if self.training and torch.rand(()) > 0.5:
++        if self.training and torch.rand(()) > 0.5 and self.copy_paste:
+             points, remissions, labels = self.apply_copy_paste(points, remissions, labels)
+         # Augment the shared cloud before either projection, preserving alignment.
+         if self.training:
+@@ -97,7 +98,8 @@
+                        num_workers=arch_cfg["train"]["workers"],
+                        pin_memory=torch.cuda.is_available())
+         self.train_dataset = DualProjectionDataset(root, data_cfg["split"]["train"],
+-            data_cfg, arch_cfg["dataset"]["sensor"], True)
++            data_cfg, arch_cfg["dataset"]["sensor"], True,
++            copy_paste=arch_cfg["dataset"].get("copy_paste", True))
+         self.valid_dataset = DualProjectionDataset(root, data_cfg["split"]["valid"],
+             data_cfg, arch_cfg["dataset"]["sensor"])
+         self.trainloader = DataLoader(self.train_dataset, shuffle=True, **options)

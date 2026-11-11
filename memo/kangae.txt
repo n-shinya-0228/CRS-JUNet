@@ -254,3 +254,33 @@ Context-aware Temporal Copy-Paste Augmentation for LiDAR BEV Semantic Segmentati
 が自然です。
 
 一番大事なのは、**「Copy-Pasteをした」ではなく、「BEV時系列セグメンテーションに合わせて、貼り付けを意味・可視性・時間の3軸で制御した」**と主張することです。
+
+
+実験	変更・検証内容	Best mIoU	結果
+8ch Baseline	従来のHandcrafted特徴ベース	50.7000%	比較基準
+C.1b	PointNet特徴 + Gated Fusion、StableLR	50.4596%	Baseline未満
+C.2	Local 3×3 Residualを追加	50.8253%	学習モデルの改善
+C.3	Global αを学習可能に変更	50.5478%	C.2未満
+C.4	Spatial αを学習可能に変更	50.1631%	C.2未満
+D.1 / D.1b	C.2の固定αを変更、再学習なし	50.8627%	α=1.2が最良
+D.2a	クラス別αのHard二段階推論	50.9595%	さらに改善
+D.2b	クラス別αのSoft二段階推論	50.9705%	現在の最高
+D.4	固定Teacher + Studentのfine-tuning	50.9691%	Epoch 0が最高、追加学習では改善なし
+D.5	Soft αを組み込んだShared-weight Scratch	49.6358%	Epoch 12が最高、Epoch 18まで確認
+
+C.2：Local 3×3によるPointNet特徴の局所情報補強が有効
+
+PointNet 16ch特徴を単に結合するよりも、近傍セルの情報を取り込んでGated Fusionする構造が良い結果になりました。以降の実験の基盤となっています。
+
+C.3・C.4：αを学習可能にしても改善しなかった
+
+Global αとSpatial αを試しましたが、いずれもC.2を下回りました。ただし、学習可能なα全般が無効だと結論づけられるわけではありません。
+
+D.1〜D.2：学習済みC.2に固定αを適用する方法が最も有効だった
+
+D.1bでGlobal α=1.2を採用し、D.2ではクラス予測に基づいてαを切り替えました。D.2b Softでは、truck・person・terrain・vegetationなどが改善し、最高mIoUを記録しました。comparison.md
+
+
+D.4・D.5：Soft αを使用した追加学習・Scratch Trainingは現状では最高値を超えていない
+
+D.4ではStudentを学習するほどValidation性能が低下しました。D.5では二段階推論自体の改善効果は確認できましたが、アップロードされたEpoch 18までの最高mIoUは49.6358%です。
