@@ -1,0 +1,24 @@
+2026-11-11T19:02:47+09:00 Training PID=14612, monitor PID=14607
+2026-11-11 19:14:53,808 Epoch 1 train loss 0.9035 (BEV 0.6506, sphere 0.8432), mIoU 0.2949
+2026-11-11 19:15:53,502 Epoch 1 validation loss 0.9887, mIoU 0.2443
+2026-11-11 19:15:53,502 Validation accuracy 0.7770
+2026-11-11 19:15:53,502 IoU class 1 [car] = 0.6020
+2026-11-11 19:15:53,502 IoU class 2 [bicycle] = 0.0302
+2026-11-11 19:15:53,502 IoU class 3 [motorcycle] = 0.0009
+2026-11-11 19:15:53,502 IoU class 4 [truck] = 0.0152
+2026-11-11 19:15:53,502 IoU class 5 [other-vehicle] = 0.0032
+2026-11-11 19:15:53,502 IoU class 6 [person] = 0.0442
+2026-11-11 19:15:53,502 IoU class 7 [bicyclist] = 0.0008
+2026-11-11 19:15:53,502 IoU class 8 [motorcyclist] = 0.0000
+2026-11-11 19:15:53,502 IoU class 9 [road] = 0.8027
+2026-11-11 19:15:53,502 IoU class 10 [parking] = 0.2307
+2026-11-11 19:15:53,502 IoU class 11 [sidewalk] = 0.5891
+2026-11-11 19:15:53,502 IoU class 12 [other-ground] = 0.0040
+2026-11-11 19:15:53,502 IoU class 13 [building] = 0.5093
+2026-11-11 19:15:53,502 IoU class 14 [fence] = 0.1148
+2026-11-11 19:15:53,502 IoU class 15 [vegetation] = 0.6725
+2026-11-11 19:15:53,502 IoU class 16 [trunk] = 0.1978
+2026-11-11 19:15:53,502 IoU class 17 [terrain] = 0.6620
+2026-11-11 19:15:53,503 IoU class 18 [pole] = 0.1046
+2026-11-11 19:15:53,503 IoU class 19 [traffic-sign] = 0.0587
+2026-11-11 19:27:57,447 Epoch 2 train loss 0.6569 (BEV 0.4733, sphere 0.6121), mIoU 0.3763

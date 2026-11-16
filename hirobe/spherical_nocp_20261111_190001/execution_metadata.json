@@ -1,0 +1,119 @@
+{
+  "started_at": "2026-11-11T19:02:47+09:00",
+  "branch": "kouhai",
+  "commit": "71b7d445cca5e4db86cf16096de009139107f9c3",
+  "dataset": "/home/ns/CRS-JUNet/SemanticKitti",
+  "run_dir": "/home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001",
+  "terminal_log": "/home/ns/CRS-JUNet/hirobe/terminal_spherical_nocp_20261111_190001.log",
+  "command": "/home/ns/CRS-JUNet/.venv/bin/python -u -B -m spherical_bev_fusion.train --dataset /home/ns/CRS-JUNet/SemanticKitti --arch_cfg /home/ns/CRS-JUNet/spherical_bev_fusion/config_nocopypaste.yaml --data_cfg /home/ns/CRS-JUNet/spherical_bev_fusion/labels.yaml --log /home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001",
+  "initialization": "scratch; no resume or pretrained checkpoint",
+  "config": {
+    "train": {
+      "loss": "xentropy",
+      "max_epochs": 100,
+      "lr": 0.001,
+      "min_lr": 2e-05,
+      "w_decay": 0.01,
+      "batch_size": 2,
+      "workers": 4,
+      "report_epoch": 1,
+      "epsilon_w": 0.01,
+      "sphere_loss_weight": 0.3
+    },
+    "model": {
+      "name": "SphericalBEVFusion",
+      "in_channels": 7,
+      "use_mps": false
+    },
+    "dataset": {
+      "copy_paste": false,
+      "labels": "SemanticKitti",
+      "scans": "SemanticKitti",
+      "sensor": {
+        "name": "HDL64",
+        "type": "spherical",
+        "img_prop": {
+          "width": 512,
+          "height": 64
+        },
+        "img_means": [
+          12.12,
+          10.88,
+          0.23,
+          -1.04,
+          0.21
+        ],
+        "img_stds": [
+          12.32,
+          11.47,
+          6.91,
+          0.86,
+          0.16
+        ],
+        "fov_up": 3.0,
+        "fov_down": -23.0
+      }
+    }
+  },
+  "sequence_counts": {
+    "train": {
+      "00": 4541,
+      "01": 1101,
+      "02": 4661,
+      "03": 801,
+      "04": 271,
+      "05": 2761,
+      "06": 1101,
+      "07": 1101,
+      "09": 1591,
+      "10": 1201
+    },
+    "valid": {
+      "08": 4071
+    }
+  },
+  "source_sha256": {
+    "spherical_bev_fusion/train.py": "4979d4116633c123b60bd2daa82b2b44ee86d499ef35ba59be3d57c1677b30ee",
+    "spherical_bev_fusion/trainer.py": "f6f69b0526004d04aea4bcff200e482994a0d8b162b98ea1a026555835691875",
+    "spherical_bev_fusion/model.py": "71276f880d16f3d2cd5cc78467fce78198571882ea0848e4af1260d46509207d",
+    "spherical_bev_fusion/dataset.py": "1696428caaa8f03510f8bb66075a361f193e384e4d57f30cac40ccff410cc16f",
+    "spherical_bev_fusion/projection.py": "3964ee29ce1c2d1d2ec3950d8380aa5dd620fac51082a1a130f7482c31805393",
+    "spherical_bev_fusion/config_nocopypaste.yaml": "69872de8004aa6496cbd68f8822aeaf86b8bfbe15df5dab52ee23291efda4542",
+    "spherical_bev_fusion/labels.yaml": "2db33f6059f459e5012d46d87b383150a39b113fc4fd3f57b7af50ced6641b03"
+  },
+  "preflight": {
+    "status": "passed",
+    "dataset": "/home/ns/CRS-JUNet/SemanticKitti",
+    "device": "cuda",
+    "copy_paste_called": false,
+    "bev_shape": [
+      2,
+      7,
+      512,
+      512
+    ],
+    "sphere_shape": [
+      2,
+      6,
+      64,
+      512
+    ],
+    "precision": "float32",
+    "forward_loss_backward": "passed",
+    "full_training_started": false,
+    "checkpoint_saved": false,
+    "planned_training_output": "/home/ns/CRS-JUNet/spherical_bev_fusion/preflight_runs/planned_spherical_nocp_20261111_190001",
+    "model_sha256": "71276f880d16f3d2cd5cc78467fce78198571882ea0848e4af1260d46509207d"
+  },
+  "preflight_result": "/home/ns/CRS-JUNet/spherical_bev_fusion/preflight_runs/nocopypaste_38oklhhr/result.json",
+  "python": "3.10.19 (main, Feb  3 2026, 22:54:15) [Clang 21.1.4 ]",
+  "libraries": {
+    "torch": "2.10.0",
+    "numpy": "1.25.2",
+    "PyYAML": "6.0",
+    "tensorboardX": "2.6"
+  },
+  "metric_domain": "polar_bev_pixels (not official SemanticKITTI point-wise mIoU)",
+  "training_pid": 14612,
+  "monitor_pid": 14607
+}

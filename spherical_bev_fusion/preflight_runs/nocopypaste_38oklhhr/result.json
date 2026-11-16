@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "dataset": "/home/ns/CRS-JUNet/SemanticKitti",
+  "device": "cuda",
+  "copy_paste_called": false,
+  "bev_shape": [
+    2,
+    7,
+    512,
+    512
+  ],
+  "sphere_shape": [
+    2,
+    6,
+    64,
+    512
+  ],
+  "precision": "float32",
+  "forward_loss_backward": "passed",
+  "full_training_started": false,
+  "checkpoint_saved": false,
+  "planned_training_output": "/home/ns/CRS-JUNet/spherical_bev_fusion/preflight_runs/planned_spherical_nocp_20261111_190001",
+  "model_sha256": "71276f880d16f3d2cd5cc78467fce78198571882ea0848e4af1260d46509207d"
+}

@@ -1,0 +1,27 @@
+{
+  "resumed_at": "2026-11-13T13:00:54+09:00",
+  "completed_epochs": 2,
+  "next_display_epoch": 3,
+  "branch": "kouhai",
+  "command": "/home/ns/CRS-JUNet/.venv/bin/python -u -B -m spherical_bev_fusion.train --dataset /home/ns/CRS-JUNet/SemanticKitti --arch_cfg /home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001/arch_cfg.yaml --data_cfg /home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001/data_cfg.yaml --log /home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001 --resume /home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001/best_val.path",
+  "resume_checkpoint": "/home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001/best_val.path",
+  "checkpoint_sha256": "127ed51a81c3cf92f2a4928d251dd2387e73b1441ef854fff5e1458d611e1e0d",
+  "best_miou": 0.31041663885116577,
+  "restored_lr": [
+    0.0009990330969298531
+  ],
+  "scheduler_last_epoch": 2,
+  "checkpoint_matches_latest_model_optimizer_scheduler": true,
+  "source_sha256": {
+    "spherical_bev_fusion/train.py": "4979d4116633c123b60bd2daa82b2b44ee86d499ef35ba59be3d57c1677b30ee",
+    "spherical_bev_fusion/trainer.py": "f6f69b0526004d04aea4bcff200e482994a0d8b162b98ea1a026555835691875",
+    "spherical_bev_fusion/model.py": "71276f880d16f3d2cd5cc78467fce78198571882ea0848e4af1260d46509207d",
+    "spherical_bev_fusion/dataset.py": "1696428caaa8f03510f8bb66075a361f193e384e4d57f30cac40ccff410cc16f",
+    "spherical_bev_fusion/projection.py": "3964ee29ce1c2d1d2ec3950d8380aa5dd620fac51082a1a130f7482c31805393",
+    "spherical_bev_fusion/config_nocopypaste.yaml": "69872de8004aa6496cbd68f8822aeaf86b8bfbe15df5dab52ee23291efda4542",
+    "spherical_bev_fusion/labels.yaml": "2db33f6059f459e5012d46d87b383150a39b113fc4fd3f57b7af50ced6641b03"
+  },
+  "stop_reason": "Unknown: no terminal traceback; former processes no longer exist",
+  "training_pid": 2453,
+  "monitor_pid": 2428
+}

@@ -8,4 +8,6 @@ output/
 log_old/
 memo/schedule.txt
 log_pointnet/
-research_a_sii2027_worktree/
+sii/
+spherical_bev_fusion/
+hirobe/

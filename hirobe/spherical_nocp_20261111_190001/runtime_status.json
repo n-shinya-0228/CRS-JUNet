@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-11-14T13:14:52+09:00",
+  "training_pid": 2453,
+  "monitor_pid": 2428,
+  "running": false,
+  "resumed_at": "2026-11-13T13:00:54+09:00",
+  "session_elapsed_seconds": 87237.35188474599,
+  "epochs_evaluated": 100,
+  "planned_epochs": 100,
+  "remaining_seconds_estimate": 0,
+  "estimate_basis": "completed epoch timings; excludes stopped time"
+}

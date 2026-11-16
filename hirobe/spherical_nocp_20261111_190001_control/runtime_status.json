@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-11-11T19:02:47+09:00",
+  "training_pid": 14612,
+  "monitor_pid": 14607,
+  "running": true,
+  "elapsed_seconds": 0.0013968529997328005,
+  "epochs_evaluated": 0,
+  "planned_epochs": 100,
+  "remaining_seconds_estimate": null
+}

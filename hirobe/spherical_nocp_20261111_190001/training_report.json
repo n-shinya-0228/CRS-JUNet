@@ -1,0 +1,43 @@
+{
+  "status": "completed",
+  "returncode": 0,
+  "finished_at": "2026-11-14T13:14:52+09:00",
+  "branch": "kouhai",
+  "dataset": "/home/ns/CRS-JUNet/SemanticKitti",
+  "run_dir": "/home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001",
+  "epochs_evaluated": 100,
+  "metric_domain": "polar_bev_pixels (not official SemanticKITTI point-wise mIoU)",
+  "trainer_results": {
+    "best_validation_miou": 0.4546411335468292,
+    "metric_domain": "polar_bev_pixels",
+    "epochs_completed": 100
+  },
+  "best_checkpoint": "/home/ns/CRS-JUNet/hirobe/spherical_nocp_20261111_190001/best_val.path",
+  "best_epoch": 97,
+  "best_validation_miou": 0.4546411335468292,
+  "best_validation_accuracy": 0.8962119817733765,
+  "best_class_iou": {
+    "car": 0.9212211966514587,
+    "bicycle": 0.2239527553319931,
+    "motorcycle": 0.253192663192749,
+    "truck": 0.24044719338417053,
+    "other-vehicle": 0.22323815524578094,
+    "person": 0.275909423828125,
+    "bicyclist": 0.4844972491264343,
+    "motorcyclist": 0.0,
+    "road": 0.9231031537055969,
+    "parking": 0.359923779964447,
+    "sidewalk": 0.7784454822540283,
+    "other-ground": 0.019387712702155113,
+    "building": 0.8171716332435608,
+    "fence": 0.2513083517551422,
+    "vegetation": 0.8360466957092285,
+    "trunk": 0.38789117336273193,
+    "terrain": 0.7918169498443604,
+    "pole": 0.4206939935684204,
+    "traffic-sign": 0.4299340546131134
+  },
+  "terminal_error_warning_lines": [
+    "  \"stop_reason\": \"Unknown: no terminal traceback; former processes no longer exist\""
+  ]
+}
