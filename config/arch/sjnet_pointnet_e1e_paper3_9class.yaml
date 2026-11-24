@@ -1,0 +1,10 @@
+# Overlay on the pinned E.1d recipe; the resolved config is saved with each run.
+base: config/arch/sjnet_pointnet_local3_raw_cp_e1d_paper3.yaml
+copy_paste:
+  mode: context_guided_paper
+  new_database: copy_paste_database_e1e_new4_trainonly
+  calibration_budgets: [24, 48, 72]
+  trials_per_donor: 3
+  search_timeout_seconds: 8
+  additional_background: {7: [9, 11], 8: [9, 11], 18: [9, 11, 17], 19: [9, 11, 17]}
+  additional_overlap: {7: 0.2, 8: 0.2, 18: 0.4, 19: 0.4}

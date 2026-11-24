@@ -1,0 +1,30 @@
+{
+  "complete": true,
+  "settings": {
+    "static_frame_stride": 10,
+    "radius_m": {
+      "7": 0.45,
+      "8": 0.48,
+      "18": 0.32,
+      "19": 0.28
+    },
+    "static_note": "One in ten frames/sequence to limit duplicate static infrastructure; riders every frame"
+  },
+  "source_scans": 19130,
+  "manifest_sha256": "5219c6e2394c7eae4781f49af04e509678aeaf8d2c641fce53cf1cb4e6a17be0",
+  "sequences": [
+    "00",
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "09",
+    "10"
+  ],
+  "code_sha256": "08002ec558ed6145071e25f6fd0e15398dc102e1f86fd2b374f0170e5412b9c7",
+  "labels_sha256": "2db33f6059f459e5012d46d87b383150a39b113fc4fd3f57b7af50ced6641b03",
+  "settings_sha256": "997b6e43030cbfbd200cb188f6e7de9364ee52e52f9b0b998d59e5ecf1ab0a3b"
+}
