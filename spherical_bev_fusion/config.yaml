@@ -16,6 +16,10 @@ model:
   use_mps: False
 
 dataset:
+  input_mode: "dual"
+  validation_cache:
+    enabled: false
+    root: "validation_cache_data"
   copy_paste: false
   labels: "SemanticKitti"
   scans: "SemanticKitti"

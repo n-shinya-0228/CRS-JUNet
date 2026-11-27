@@ -24,9 +24,17 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         os.makedirs(self.logdir, exist_ok=True)
 
+        model_name = arch["model"]["name"]
+        models = {"SphericalBEVFusion": SphericalBEVFusion}
+        if model_name not in models:
+            raise ValueError(f"Unknown model: {model_name}")
+        self.bev_shared = model_name == "BEVSharedInputFusion"
+        expected_mode = "bev_shared" if self.bev_shared else "dual"
+        if arch["dataset"].get("input_mode", "dual") != expected_mode:
+            raise ValueError("model.name and dataset.input_mode do not match")
         self.parser = ParserBEVSphere(datadir, data, arch)
         self.nclasses = self.parser.get_n_classes()
-        self.model = SphericalBEVFusion(nclasses=self.nclasses).to(self.device)
+        self.model = models[model_name](nclasses=self.nclasses).to(self.device)
 
         frequencies = torch.zeros(self.nclasses, dtype=torch.float32)
         for raw_id, frequency in data["content"].items():
@@ -38,6 +46,7 @@ class Trainer:
         weights = torch.clamp(weights, max=20.0)
         weights[0] = 0.0
         self.criterion = nn.CrossEntropyLoss(weight=weights, ignore_index=0).to(self.device)
+        # In the BEV-only experiment, this same coefficient weights branch-2 BEV supervision.
         self.sphere_loss_weight = float(arch["train"].get("sphere_loss_weight", 0.3))
         self.optimizer = optim.AdamW(
             self.model.parameters(),
@@ -77,13 +86,18 @@ class Trainer:
             self.best_miou = float(checkpoint.get("best_miou", 0.0))
 
     def _move_batch(self, batch):
-        keys = (
+        keys = ("bev", "bev_labels") if self.bev_shared else (
             "bev", "sphere", "bev_labels", "sphere_labels",
             "bev_to_sphere", "bev_to_sphere_valid",
         )
         return {key: batch[key].to(self.device, non_blocking=True) for key in keys}
 
     def _forward_loss(self, batch):
+        if self.bev_shared:
+            outputs = self.model(batch["bev"])
+            main_loss = self._safe_loss(outputs["bev_logits"], batch["bev_labels"])
+            aux_loss = self._safe_loss(outputs["aux_logits"], batch["bev_labels"])
+            return outputs, main_loss + self.sphere_loss_weight * aux_loss, main_loss, aux_loss
         outputs = self.model(
             batch["bev"],
             batch["sphere"],
@@ -108,13 +122,14 @@ class Trainer:
 
     def _metrics(self, confusion):
         confusion = confusion.clone()
+        # Rows: ground truth; columns: predictions. Ignore only ground-truth 0.
+        # Prediction 0 on a valid target must remain a false negative.
         confusion[0, :] = 0
-        confusion[:, 0] = 0
         intersection = confusion.diag()[1:]
         union = confusion.sum(dim=0)[1:] + confusion.sum(dim=1)[1:] - intersection
         iou = intersection.float() / union.clamp_min(1).float()
-        precision = intersection.sum().float() / confusion.sum(dim=0)[1:].sum().clamp_min(1)
-        return {"miou": iou.mean().item(), "accuracy": precision.item(),
+        accuracy = intersection.sum().float() / confusion.sum().clamp_min(1)
+        return {"miou": iou.mean().item(), "accuracy": accuracy.item(),
                 "class_iou": iou.tolist()}
 
     def _run_epoch(self, loader, training):
@@ -153,7 +168,7 @@ class Trainer:
         return {
             "loss": loss_total / sample_count,
             "bev_loss": bev_loss_total / sample_count,
-            "sphere_loss": sphere_loss_total / sample_count,
+            ("branch2_bev_loss" if self.bev_shared else "sphere_loss"): sphere_loss_total / sample_count,
             **self._metrics(confusion),
         }
 
@@ -176,10 +191,12 @@ class Trainer:
         for epoch in range(self.start_epoch, max_epochs):
             train_metrics = self._run_epoch(self.parser.trainloader, training=True)
             self.scheduler.step()
+            aux_name = "branch2_bev" if self.bev_shared else "sphere"
+            aux_key = "branch2_bev_loss" if self.bev_shared else "sphere_loss"
             self.logger.info(
                 f"Epoch {epoch + 1} train loss {train_metrics['loss']:.4f} "
                 f"(BEV {train_metrics['bev_loss']:.4f}, "
-                f"sphere {train_metrics['sphere_loss']:.4f}), "
+                f"{aux_name} {train_metrics[aux_key]:.4f}), "
                 f"mIoU {train_metrics['miou']:.4f}"
             )
             self.writer.add_scalar("train/loss", train_metrics["loss"], epoch)

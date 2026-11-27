@@ -1,4 +1,4 @@
-"""Run with python -m spherical_bev_fusion.train."""
+"""Run from the parent directory with python -m training_only.train."""
 import argparse
 import logging
 from pathlib import Path
@@ -11,7 +11,7 @@ def main():
     parser.add_argument('--dataset', default='SemanticKitti')
     parser.add_argument('--arch_cfg', default=str(here / 'config.yaml'))
     parser.add_argument('--data_cfg', default=str(here / 'labels.yaml'))
-    parser.add_argument('--log', default=str(here / 'runs' / 'fusion128'))
+    parser.add_argument('--log', default=str(here / 'runs' / 'SphericalBEVFusion_SharedGeometry_NoCopyPaste_bs2'))
     parser.add_argument('--resume')
     parser.add_argument('--pretrained')
     parser.add_argument('--evaluate', action='store_true')

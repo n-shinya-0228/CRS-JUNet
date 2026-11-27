@@ -1,14 +1,27 @@
 import numpy as np
 
 
-def _make_bev_projection(points, remissions, point_labels):
+def _compute_geometry(points):
+    """Compute common coordinates once, after point-cloud augmentation."""
+    radius = np.hypot(points[:, 0], points[:, 1])
+    azimuth = np.arctan2(points[:, 1], points[:, 0])
+    depth = np.linalg.norm(points, axis=1)
+    pitch = np.degrees(np.arcsin(np.clip(
+        points[:, 2] / np.maximum(depth, 1e-6), -1.0, 1.0)))
+    return dict(radius=radius, azimuth=azimuth, depth=depth, pitch=pitch)
+
+
+def _make_bev_projection(points, remissions, point_labels, geometry=None):
     height = 512
     width = 512
     max_radius = 51.2
     resolution = max_radius / height
 
-    radius = np.hypot(points[:, 0], points[:, 1])
-    azimuth = np.arctan2(points[:, 1], points[:, 0])
+    if geometry is None:
+        radius = np.hypot(points[:, 0], points[:, 1])
+        azimuth = np.arctan2(points[:, 1], points[:, 0])
+    else:
+        radius, azimuth = geometry["radius"], geometry["azimuth"]
     visible = (radius > 0.0) & (radius < max_radius)
     point_indices = np.flatnonzero(visible)
     row = np.floor(radius[point_indices] / resolution).astype(np.int32)
@@ -80,10 +93,10 @@ def _normalize_bev(features):
 
 
 def _make_spherical_projection(points, remissions, point_labels, height, width,
-                               fov_up, fov_down, means, stds):
-    depth = np.linalg.norm(points, axis=1)
-    pitch = np.degrees(np.arcsin(np.clip(points[:, 2] / np.maximum(depth, 1e-6), -1.0, 1.0)))
-    yaw = np.arctan2(points[:, 1], points[:, 0])
+                               fov_up, fov_down, means, stds, geometry=None):
+    if geometry is None:
+        geometry = _compute_geometry(points)
+    depth, pitch, yaw = geometry["depth"], geometry["pitch"], geometry["azimuth"]
 
     row = np.floor((fov_up - pitch) / (fov_up - fov_down) * height).astype(np.int32)
     col = np.floor((yaw + np.pi) / (2.0 * np.pi) * width).astype(np.int32)
@@ -140,8 +153,9 @@ def build_dual_projection(points, remissions, point_labels, sphere_config):
     if not (len(points) == len(remissions) == len(point_labels)):
         raise ValueError("points, remissions, and point_labels must have equal length")
 
+    geometry = _compute_geometry(points)
     bev_features, bev_mask, bev_labels, bev_point_index = _make_bev_projection(
-        points, remissions, point_labels
+        points, remissions, point_labels, geometry=geometry
     )
 
     sphere_features, sphere_labels, sphere_mask, sphere_point_index, sphere_row, sphere_col, sphere_visible = (
@@ -155,6 +169,7 @@ def build_dual_projection(points, remissions, point_labels, sphere_config):
             fov_down=float(sphere_config["fov_down"]),
             means=sphere_config["means"],
             stds=sphere_config["stds"],
+            geometry=geometry,
         )
     )
 
@@ -190,3 +205,15 @@ def build_dual_projection(points, remissions, point_labels, sphere_config):
         "bev_to_sphere": bev_to_sphere,
         "bev_to_sphere_valid": bev_to_sphere_valid,
     }
+
+def build_bev_only_projection(points, remissions, point_labels):
+    """One Polar BEV projection for a two-branch shared-input experiment."""
+    points = np.asarray(points, dtype=np.float32)
+    remissions = np.asarray(remissions, dtype=np.float32).reshape(-1)
+    point_labels = np.asarray(point_labels, dtype=np.int64).reshape(-1)
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("points must have shape [N, 3]")
+    if not (len(points) == len(remissions) == len(point_labels)):
+        raise ValueError("points, remissions, and point_labels must have equal length")
+    bev, _, labels, _ = _make_bev_projection(points, remissions, point_labels)
+    return {"bev": bev, "bev_labels": labels}
